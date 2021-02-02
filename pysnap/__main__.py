@@ -1,4 +1,11 @@
-import typer
-from .main import app
+from botocore.exceptions import NoCredentialsError, NoRegionError
 
-app()
+from .main import app
+import logging
+
+logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.WARNING)
+
+try:
+    app()
+except (NoCredentialsError, NoRegionError) as e:
+    logging.error(e.args[0])
