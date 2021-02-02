@@ -1,6 +1,8 @@
 .vscode
 .idea
-.sw?
+*.sw?
 *.img
 *.vdi
+stubs
+tmp
 __pycache__
