@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "pysnap"
+name = "dsnap"
 version = "0.1.0"
-description = ""
+description = "Utility for downloading EBS snapshots using the EBS Direct API's"
 authors = ["Ryan Gerstenkorn <ryan.gerstenkorn@rhinosecuritylabs.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
-pysnap = "pysnap.main:app"
+dsnap = "dsnap.main:app"
 
 [tool.poetry.dependencies]
 python = "^3.9"

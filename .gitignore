@@ -5,4 +5,6 @@
 *.vdi
 stubs
 tmp
+venv
+dist
 __pycache__

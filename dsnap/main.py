@@ -8,7 +8,7 @@ import boto3
 import boto3.session
 import typer
 
-from pysnap.snapshot import Snapshot, describe_snapshots
+from dsnap.snapshot import Snapshot, describe_snapshots
 
 app = typer.Typer()
 
