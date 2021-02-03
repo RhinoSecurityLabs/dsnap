@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, List, Iterator, NamedTuple, IO, Callable
 import logging
 from queue import Queue, Empty
 
+import botocore
 from mypy_boto3_ebs.type_defs import BlockTypeDef
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ class WriteBlock(NamedTuple):
 class Snapshot:
     def __init__(self, snapshot_id: str, sess: boto3.session.Session) -> None:
         self.snapshot_id = snapshot_id
-        self.ebs: EBSClient = sess.client('ebs')
+        self.ebs: EBSClient = sess.client('ebs', config=botocore.config.Config(max_pool_connections=FETCH_THREADS))
         self.ec2: EC2Client = sess.client('ec2')
         self.volume_size = 0
         self.data_size_mb = 0
