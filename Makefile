@@ -1,9 +1,9 @@
 update:
 	poetry update
 
-requirements:
-	poetry export --output requirements.txt
-	poetry export --dev --output requirements-dev.txt
+	# TODO: look into why GitHub Actions breaks when --without-hashes is not used
+	poetry export --without-hashes --output requirements.txt
+	poetry export --without-hashes --dev --output requirements-dev.txt
 
 flake8:
 	flake8 dsnap --count --select=E9,F63,F7,F82 --show-source --statistics
