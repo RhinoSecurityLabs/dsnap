@@ -1,4 +1,4 @@
-from pysnap import __version__
+from dsnap import __version__
 
 
 def test_version():
