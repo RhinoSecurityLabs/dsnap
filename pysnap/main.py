@@ -35,4 +35,4 @@ def list_snapshots(format: Output = Output.list):
 @app.command()
 def download(snapshot_id: str, output: Path = typer.Option(Path("output.img"))):
     snap = Snapshot(snapshot_id, sess)
-    snap.download(output.absolute())
+    snap.download(output.absolute().as_posix())
