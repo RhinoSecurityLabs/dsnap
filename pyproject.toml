@@ -9,7 +9,7 @@ readme = "README.md"
 dsnap = "dsnap.main:app"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 typer = "^0.3.2"
 boto3 = "^1.16.63"
 boto3-stubs = {extras = ["ebs", "ec2"], version = "^1.16.63"}
