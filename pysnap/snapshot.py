@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, List, Iterator, NamedTuple, IO, Callable
 import logging
 from queue import Queue, Empty
 
+from mypy_boto3_ebs.type_defs import BlockTypeDef
+
 if TYPE_CHECKING:
     from mypy_boto3_ebs.client import EBSClient
     from mypy_boto3_ebs.type_defs import BlockTypeDef
@@ -14,6 +16,8 @@ import boto3.session
 
 MEGABYTE: int = 1024 * 1024
 GIBIBYTE: int = 1024 * MEGABYTE
+
+FETCH_THREADS=30
 
 
 class WriteBlock(NamedTuple):
@@ -53,7 +57,7 @@ class Snapshot:
             blocks.extend(resp['Blocks'])
             self.data_size_mb += int(resp['BlockSize'] * len(resp['Blocks']) / MEGABYTE)
 
-        logging.warning(f"Number of blocks in image: {len(blocks)}")
+        logging.info(f"Number of blocks in image: {len(blocks)}")
         return blocks
 
     def download(self, output_file: str):
@@ -66,17 +70,23 @@ class Snapshot:
             f.truncate(self.volume_size)
             f.flush()
 
+        threads = list()
         done = False
-        t = Thread(target=self._write_blocks_worker, args=(lambda: done,))
-        t.start()
+        for i in range(FETCH_THREADS):
+            t = Thread(target=self._write_blocks_worker, args=(lambda: done,))
+            threads.append(t)
+            t.start()
 
         blocks = self.get_blocks()
         for block in blocks:
-            logging.warning(f"Putting block index {block['BlockIndex']} on the queue")
+            logging.debug(f"Putting block index {block['BlockIndex']} on the queue")
             self.queue.put(block)
 
         self.queue.join()
         done = True
+
+        for t in threads:
+            t.join()
 
         print(f"Output Path: {output_file}")
 
@@ -96,7 +106,7 @@ class Snapshot:
                     raise e
 
     def fetch_block(self, block: BlockTypeDef) -> WriteBlock:
-        logging.warning(f"Getting block index {block['BlockIndex']}")
+        logging.debug(f"Getting block index {block['BlockIndex']}")
         resp = self.ebs.get_snapshot_block(
             SnapshotId=self.snapshot_id,
             BlockIndex=block['BlockIndex'],
@@ -113,7 +123,7 @@ class Snapshot:
 
     @staticmethod
     def write_block(block: WriteBlock):
-        logging.warning(f"Writing block at offset {block.Offset}")
+        logging.debug(f"Writing block at offset {block.Offset}")
         """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
         with os.fdopen(os.open(block.File, os.O_RDWR | os.O_CREAT), 'rb+') as f:
             f.seek(block.Offset)
