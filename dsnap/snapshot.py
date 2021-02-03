@@ -1,15 +1,14 @@
-import os
-from threading import Thread
-from typing import TYPE_CHECKING, List, Iterator, NamedTuple, IO, Callable, Generator
 import logging
+import os
 from queue import Queue, Empty
+from threading import Thread
+from typing import TYPE_CHECKING, List, Iterator, NamedTuple, IO
 
 import botocore
 from mypy_boto3_ebs.type_defs import BlockTypeDef
 
 if TYPE_CHECKING:
     from mypy_boto3_ebs.client import EBSClient
-    from mypy_boto3_ebs.type_defs import BlockTypeDef
     from mypy_boto3_ec2.client import EC2Client
     from mypy_boto3_ec2.type_defs import SnapshotTypeDef
 
@@ -32,8 +31,8 @@ class Snapshot:
         self.ebs: EBSClient = sess.client('ebs', config=botocore.config.Config(max_pool_connections=FETCH_THREADS))
         self.ec2: EC2Client = sess.client('ec2')
 
-        self.queue = Queue()
-        self.output_file = None
+        self.queue: Queue = Queue()
+        self.output_file = ''
 
         self.volume_size_b = 0
         self.total_blocks = 0

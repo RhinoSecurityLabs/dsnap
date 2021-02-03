@@ -6,13 +6,13 @@ from typing import Optional
 
 import boto3
 import boto3.session
-import typer
+from typer import Argument, Option, Typer, prompt
 
 from dsnap.snapshot import Snapshot, describe_snapshots
 
-app = typer.Typer()
+app = Typer()
 
-sess: boto3.session.Session = None
+sess: boto3.session.Session = boto3.session.Session()
 
 
 class Output(str, Enum):
@@ -21,7 +21,7 @@ class Output(str, Enum):
 
 
 @app.callback()
-def session(region: str = typer.Option(default='us-east-1'), profile: str = typer.Option(default=None)):
+def session(region: str = Option(default='us-east-1'), profile: str = Option(default=None)):
     global sess
     sess = boto3.session.Session(region_name=region, profile_name=profile)
 
@@ -44,7 +44,7 @@ def snapshot_prompt(value: Optional[str]) -> str:
         snapshots = [x for x in describe_snapshots(sess, OwnerIds=['self'])]
         for i, k in enumerate(snapshots):
             print(f"{i}) {k['SnapshotId']} (Description: {k['Description']}, Size: {k['VolumeSize']}GB)")
-        answer = typer.prompt("Select snapshot")
+        answer = prompt("Select snapshot")
         try:
             return snapshots[int(answer)]['SnapshotId']
         except IndexError:
@@ -53,6 +53,6 @@ def snapshot_prompt(value: Optional[str]) -> str:
 
 
 @app.command()
-def get(snapshot_id: str = typer.Argument(default=None, callback=snapshot_prompt), output: Path = typer.Option(Path("output.img"))):
+def get(snapshot_id: str = Argument(default=None, callback=snapshot_prompt), output: Path = Option(Path("output.img"))):
     snap = Snapshot(snapshot_id, sess)
     snap.download(output.absolute().as_posix())
