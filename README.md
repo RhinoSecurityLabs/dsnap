@@ -8,7 +8,7 @@ Utility for downloading EBS snapshots using the EBS Direct API's.
 
 If you want to avoid installing to the shared python path create a virtual env first.
 ```
-% python -m venv venv
+% python3 -m venv venv
 % . venv/bin/activate
 ```
 
