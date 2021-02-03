@@ -1,3 +1,6 @@
+update:
+	poetry update
+
 requirements:
 	poetry export --output requirements.txt
 	poetry export --dev --output requirements-dev.txt
