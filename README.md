@@ -4,27 +4,31 @@ Utility for downloading EBS snapshots using the EBS Direct API's.
 
 ## Install
 
+### PyPi
+
+If you want to avoid installing to the shared python path create a virtual env first.
 ```
-git clone https://github.com/RyanJarv/dsnap.git
-cd dsnap
-python -m venv venv 
-pip install -r requirements.txt
-. venv/bin/activate
-python -m dsnap --help 
+% python -m venv venv
+% . venv/bin/activate
+```
+
+Then use pip install:
+```
+% pip install dsnap
 ```
 
 ## Examples
 
 ### Listing Snapshots
 ```
-% python -m dsnap --profile demo list
+% dsnap --profile demo list
            Id          |   Owner ID   |   State
 snap-0dbb0347f47e38b96   922105094392   completed
 ```
 
 ### Downloading Snapshot
 ```
-% python -m dsnap --profile demo get snap-0dbb0347f47e38b96
+% dsnap --profile demo get snap-0dbb0347f47e38b96
 Output Path: /cwd/output.img
 ```
 
