@@ -1,3 +1,6 @@
+requirements:
+	poetry export -f requirements.txt -o requirements.txt
+
 flake8:
 	flake8 pysnap
 
