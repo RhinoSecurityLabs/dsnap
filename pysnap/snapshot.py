@@ -52,7 +52,7 @@ class Snapshot:
         blocks = resp['Blocks']
 
         while resp.get('NextToken'):
-            resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id, NextToken=next_token)
+            resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id, NextToken=resp.get('NextToken'))
             blocks.extend(resp['Blocks'])
 
         self.total_blocks = len(blocks)
