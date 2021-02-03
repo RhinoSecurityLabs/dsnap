@@ -2,6 +2,17 @@
 
 Utility for downloading EBS snapshots using the EBS Direct API's.
 
+## Install
+
+```
+git clone https://github.com/RyanJarv/pysnap.git
+cd pysnap
+python -m venv venv 
+pip install -r requirements.txt
+. venv/bin/activate
+python -m pysnap --help 
+```
+
 ## Examples
 
 ### Listing Snapshots
@@ -15,6 +26,13 @@ snap-0dbb0347f47e38b96   922105094392   completed
 ```
 % python -m pysnap --profile demo get snap-0dbb0347f47e38b96
 Output Path: /cwd/output.img
+```
+
+If you don't specify a snapshot  you'll get a prompt to ask which one you want to download:
+```
+% pysnap --profile demo get
+0) snap-0dbb0347f47e38b96 (Description: feb2, Size: 8GB)
+1) snap-0772d047d81e0a5e5 (Description: test3, Size: 8GB)
 ```
 
 ### Converting to VDI
