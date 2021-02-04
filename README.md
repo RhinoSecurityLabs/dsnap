@@ -75,7 +75,7 @@ end
 
 ### Mounting With Docker
 
-This uses libguestfs to work directly with the downloaded img file. There is a lot of functionality in libguestfs and it can be somewhat confusing to work with but the steps below will get you started with the basics.
+This uses libguestfs to work directly with the downloaded img file.
 
 #### Build Docker Container
 ```
@@ -90,9 +90,9 @@ make docker/build
 IMAGE=output.img make docker/run
 ```
 
-This will take a second to start up. After it drops you into the shell you should be able to run commands like ls, cd, cat. However they don't always behave exactly like they do in a normal shell.
+This will take a second to start up. After it drops you into the shell you should be able to run commands like ls, cd, cat. However worth noting they don't always behave exactly like they do in a normal shell.
 
-The output from the shell will give you the basics of how to use the guestfish shell. For a full list of command you can run `help --list`.
+The output will give you the basics of how to use the guestfish shell. For a full list of command you can run `help --list`.
 
 Below is an example of starting the shell and printing the contents of /etc/os-release.
 
