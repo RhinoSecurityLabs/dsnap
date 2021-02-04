@@ -84,7 +84,7 @@ cd dsnap
 make docker/build
 ```
 
-### Run guestfish shell
+#### Run Guestfish Shell
 
 ```
 IMAGE=output.img make docker/run
