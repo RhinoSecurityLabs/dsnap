@@ -73,6 +73,53 @@ Vagrant.configure("2") do |config|
 end
 ```
 
+### Mounting With Docker
+
+This uses libguestfs to work directly with the downloaded img file. There is a lot of functionality in libguestfs and it can be somewhat confusing to work with but the steps below will get you started with the basics.
+
+#### Build Docker Container
+```
+git clone https://github.com/RhinoSecurityLabs/dsnap.git
+cd dsnap
+make docker/build
+```
+
+### Run guestfish shell
+
+```
+IMAGE=output.img make docker/run
+```
+
+This will take a second to start up. After it drops you into the shell you should be able to run commands like ls, cd, cat. However they don't always behave exactly like they do in a normal shell.
+
+The output from the shell will give you the basics of how to use the guestfish shell. For a full list of command you can run `help --list`.
+
+Below is an example of starting the shell and printing the contents of /etc/os-release.
+
+```
+% IMAGE=output2.img make docker/run
+docker run -it -v "/cwd/dsnap/output2.img:/disks/output2.img" -w /disks mount --ro -a "output2.img" -m /dev/sda1:/
+
+Welcome to guestfish, the guest filesystem shell for
+editing virtual machine filesystems and disk images.
+
+Type: ‘help’ for help on commands
+      ‘man’ to read the manual
+      ‘quit’ to quit the shell
+
+><fs> cat /etc/os-release
+NAME="Amazon Linux"
+VERSION="2"
+ID="amzn"
+ID_LIKE="centos rhel fedora"
+VERSION_ID="2"
+PRETTY_NAME="Amazon Linux 2"
+ANSI_COLOR="0;33"
+CPE_NAME="cpe:2.3:o:amazon:amazon_linux:2"
+HOME_URL="https://amazonlinux.com/"
+```
+
+
 ## Development
 
 For CLI development make sure you include the `cli` extra shown below. You'll also want to invoke the package by using python's `-m` (shown below) for testing local changes, the dnsap binary installed to the environment will only update when you run pip install.

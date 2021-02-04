@@ -1,3 +1,5 @@
+IMAGE ?= output.img
+
 flake8:
 	flake8 dsnap --count --select=E9,F63,F7,F82 --show-source --statistics
 	flake8 dsnap --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
@@ -12,6 +14,12 @@ clean:
 	rm -rf .pytest_cache/
 	rm -rf out/
 	rm -rf ./**/**/__pycache__/
+
+docker/build:
+	docker build -f Dockerfile.mount -t dsnap-mount .
+
+docker/run:
+	docker run -it -v "${PWD}/${IMAGE}:/disks/${IMAGE}" -w /disks mount --ro -a "${IMAGE}" -m /dev/sda1:/
 
 test:
 	pytest ./tests
