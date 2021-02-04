@@ -1,11 +1,9 @@
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Iterator, Optional, List, Dict
+from typing import TYPE_CHECKING, Optional, List, Dict
 
 import boto3.session
 import botocore.config
 import sys
-from click import prompt
-
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2.client import EC2Client
@@ -22,6 +20,10 @@ class Ebs:
         self.boto3_session = boto3_session
         self.botocore_conf = botocore_conf
         self.snapshots: OrderedDict[str, 'SnapshotTypeDef'] = OrderedDict({})
+
+    def set_snapshots(self, snapshots: List[dict]) -> None:
+        self.snapshots = dict(map(lambda s: (s['SnapshotId'], s), snapshots))
+
 
     def get_snapshots(self, **kwargs) -> Dict[str, 'SnapshotTypeDef']:
         """Gets available snapshots with the current class config. Keyword args are passed through to describe_snapshots.
@@ -44,7 +46,7 @@ class Ebs:
         """
         for i, snap in enumerate(self.snapshots.values()):
             print(f"{i}) {snap['SnapshotId']} (Description: {snap['Description']}, Size: {snap['VolumeSize']}GB)")
-        answer = int(prompt("Select snapshot"))
+        answer = int(input("Select snapshot: "))
         try:
             return list(self.snapshots.values())[answer]
         except IndexError:

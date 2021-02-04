@@ -6,15 +6,10 @@ Utility for downloading EBS snapshots using the EBS Direct API's.
 
 ### PyPi
 
-If you want to avoid installing to the shared python path create a virtual env first.
-```
-% python3 -m venv venv
-% . venv/bin/activate
-```
+NOTE: This won't work until this package is published, for now see [Development](#Development)
 
-Then use pip install:
 ```
-% pip install dsnap
+% pip install 'dsnap[cli]'
 ```
 
 ## Examples
@@ -77,3 +72,32 @@ Vagrant.configure("2") do |config|
   SHELL
 end
 ```
+
+## Development
+
+For CLI development make sure you include the `cli` extra shown below. You'll also want to invoke the package by using python's `-m` (shown below) for testing local changes, the dnsap binary installed to the environment will only update when you run pip install.
+
+### Setup
+```
+git clone https://github.com/RhinoSecurityLabs/dsnap.git
+cd dsnap
+python3 -m venv venv
+. venv/bin/activate
+python -m pip install '.[cli]'
+```
+
+### Running With Local Changes
+```
+python -m dsnap --help
+```
+
+### Linting and Type Checking
+```
+make lint
+```
+
+### Testing
+```
+make test
+```
+

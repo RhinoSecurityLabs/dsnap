@@ -10,8 +10,11 @@ dsnap = "dsnap.main:app"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-typer = "^0.3.2"
 boto3 = "^1.16.63"
+typer = { version = "^0.3.2", optional = true }
+
+[tool.poetry.extras]
+cli = ["typer"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
