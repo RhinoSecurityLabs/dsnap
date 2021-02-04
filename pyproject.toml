@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dsnap"
-version = "0.1.0"
+version = "0.1.1"
 description = "Utility for downloading EBS snapshots using the EBS Direct API's"
 authors = ["Ryan Gerstenkorn <ryan.gerstenkorn@rhinosecuritylabs.com>"]
 readme = "README.md"
@@ -12,12 +12,12 @@ dsnap = "dsnap.main:app"
 python = "^3.7"
 typer = "^0.3.2"
 boto3 = "^1.16.63"
-boto3-stubs = {extras = ["ebs", "ec2"], version = "^1.16.63"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 flake8 = "^3.8.4"
 mypy = "^0.800"
+boto3-stubs = {extras = ["ebs", "ec2"], version = "^1.16.63"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
