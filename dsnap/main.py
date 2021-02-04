@@ -1,14 +1,17 @@
 import json
-import sys
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Iterator, TYPE_CHECKING
 
 import boto3
 import boto3.session
-from typer import Argument, Option, Typer, prompt
+from typer import Argument, Option, Typer
 
-from dsnap.snapshot import Snapshot, describe_snapshots
+from dsnap.ebs import Ebs
+from dsnap.snapshot import Snapshot
+
+if TYPE_CHECKING:
+    from mypy_boto3_ec2.type_defs import SnapshotTypeDef
 
 app = Typer()
 
@@ -28,10 +31,11 @@ def session(region: str = Option(default='us-east-1'), profile: str = Option(def
 
 @app.command("list")
 def list_snapshots(format: Output = Output.list):
-    print("           {}          |   {}   |   {}".format('Id', 'Owner ID', 'State'))
-    for snapshot in describe_snapshots(sess, OwnerIds=['self']):
+    print("           {}          |   {}   | {}".format('Id', 'Owner ID', 'Description'))
+    ebs = Ebs(boto3_session=sess)
+    for (id, snapshot) in ebs.get_snapshots(OwnerIds=['self']).items():
         if format == format.list:
-            print("{}   {}   {}".format(snapshot['SnapshotId'], snapshot['OwnerId'], snapshot['State']))
+            print("{}   {}   {}".format(id, snapshot['OwnerId'], snapshot['Description']))
         elif format == format.json:
             print(json.dumps(snapshot, default=str))
 
@@ -41,16 +45,10 @@ def snapshot_prompt(value: Optional[str]) -> str:
     if value:
         return value
     else:
-        snapshots = [x for x in describe_snapshots(sess, OwnerIds=['self'])]
-        for i, k in enumerate(snapshots):
-            print(f"{i}) {k['SnapshotId']} (Description: {k['Description']}, Size: {k['VolumeSize']}GB)")
-        answer = prompt("Select snapshot")
-        try:
-            return snapshots[int(answer)]['SnapshotId']
-        except IndexError:
-            print(f"Invalid selection, valid inputs are 0 through {len(snapshots)-1}", file=sys.stderr)
-            return snapshot_prompt(None)
-
+        ebs = Ebs(boto3_session=sess)
+        ebs.get_snapshots(OwnerIds=['self'])
+        snapshot: 'SnapshotTypeDef' = ebs.snapshot_prompt()
+        return snapshot['SnapshotId']
 
 @app.command()
 def get(snapshot_id: str = Argument(default=None, callback=snapshot_prompt), output: Path = Option(Path("output.img"))):

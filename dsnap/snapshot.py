@@ -2,13 +2,13 @@ import logging
 import os
 from queue import Queue, Empty
 from threading import Thread
-from typing import TYPE_CHECKING, List, Iterator, NamedTuple, IO
+from typing import TYPE_CHECKING, List, Iterator, NamedTuple, IO, Optional
 
-import botocore
-from mypy_boto3_ebs.type_defs import BlockTypeDef
+import botocore.config
 
 if TYPE_CHECKING:
     from mypy_boto3_ebs.client import EBSClient
+    from mypy_boto3_ebs.type_defs import BlockTypeDef
     from mypy_boto3_ec2.client import EC2Client
     from mypy_boto3_ec2.type_defs import SnapshotTypeDef
 
@@ -26,13 +26,20 @@ class Block(NamedTuple):
 
 
 class Snapshot:
-    def __init__(self, snapshot_id: str, sess: boto3.session.Session) -> None:
+    def __init__(
+            self,
+            snapshot_id: str,
+            boto3_session: boto3.session.Session = boto3.session.Session(region_name='us-east-1'),
+            botocore_conf: Optional[botocore.config.Config] = botocore.config.Config()
+    ) -> None:
         self.snapshot_id = snapshot_id
-        self.ebs: EBSClient = sess.client('ebs', config=botocore.config.Config(max_pool_connections=FETCH_THREADS))
-        self.ec2: EC2Client = sess.client('ec2')
+        self.output_file = ''
 
         self.queue: Queue = Queue()
-        self.output_file = ''
+
+        # Make sure the number of connections matches the number of threads we run when fetching the EBS snapshot
+        ebs_config = botocore_conf.merge(botocore.config.Config(max_pool_connections=FETCH_THREADS))
+        self.ebs: EBSClient = boto3_session.client('ebs', config=ebs_config)
 
         self.volume_size_b = 0
         self.total_blocks = 0
@@ -41,7 +48,7 @@ class Snapshot:
 
         self.get_blocks()
 
-    def get_blocks(self) -> List[BlockTypeDef]:
+    def get_blocks(self) -> List['BlockTypeDef']:
         resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id)
 
         self.block_size_b = resp['BlockSize']
@@ -89,7 +96,7 @@ class Snapshot:
     def _write_blocks_worker(self):
         while self.total_blocks != self.blocks_written:
             try:
-                block: BlockTypeDef = self.queue.get(timeout=0.2)
+                block: 'BlockTypeDef' = self.queue.get(timeout=0.2)
                 self.write_block(self.fetch_block(block))
                 self.blocks_written += 1
                 print(f"Saved block {self.blocks_written} of {self.total_blocks}", end='\r')
@@ -101,7 +108,7 @@ class Snapshot:
                     logging.exception(f"[ERROR] {e.args}")
                     raise e
 
-    def fetch_block(self, block: BlockTypeDef) -> Block:
+    def fetch_block(self, block: 'BlockTypeDef') -> Block:
         logging.debug(f"Getting block index {block['BlockIndex']}")
         resp = self.ebs.get_snapshot_block(
             SnapshotId=self.snapshot_id,
@@ -124,10 +131,3 @@ class Snapshot:
             bytes_written = f.write(block.BlockData.read())
             f.flush()
             return bytes_written
-
-
-def describe_snapshots(sess, **kwargs) -> Iterator['SnapshotTypeDef']:
-    ec2: EC2Client = sess.client('ec2')
-    for page in ec2.get_paginator('describe_snapshots').paginate(**kwargs):
-        for snapshot in page['Snapshots']:
-            yield snapshot

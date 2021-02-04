@@ -1,6 +1,6 @@
 from botocore.exceptions import NoCredentialsError, NoRegionError
 
-from .main import app
+from dsnap.main import app
 import logging
 
 logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.WARNING)
