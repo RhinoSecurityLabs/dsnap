@@ -21,7 +21,7 @@ NOTE: This won't work until this package is published, for now see [Development]
 snap-0dbb0347f47e38b96   922105094392   completed
 ```
 
-### Downloading Snapshot
+### Downloading a Snapshot
 ```
 % dsnap --profile demo get snap-0dbb0347f47e38b96
 Output Path: /cwd/output.img
@@ -29,9 +29,17 @@ Output Path: /cwd/output.img
 
 If you don't specify a snapshot  you'll get a prompt to ask which one you want to download:
 ```
-% dsnap --profile demo get
-0) snap-0dbb0347f47e38b96 (Description: feb2, Size: 8GB)
-1) snap-0772d047d81e0a5e5 (Description: test3, Size: 8GB)
+% python -m dsnap --profile chris get
+0) i-01f0841393cd39f06 (ip-172-31-27-0.ec2.internal, vpc-04a91864355539a41, subnet-0e56cd55282fa9158)
+Select Instance: 0
+0) vol-0a1aab48b0bc3039d (/dev/sdb)
+1) vol-0c616d718ab00e70c (/dev/xvda)
+Select Volume: 0
+No snapshots found, create one? [y/N]: y
+Creating snapshot for Instance(s): i-01f0841393cd39f06 /dev/sdb, Volume: vol-0a1aab48b0bc3039d
+Waiting for snapshot to complete.
+Output Path: /Users/ryangerstenkorn/Code/dsnap/output.img
+Cleaning up snapshot: snap-0543a8681adce0086
 ```
 
 ### Converting to VDI

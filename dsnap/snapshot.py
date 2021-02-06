@@ -2,7 +2,7 @@ import logging
 import os
 from queue import Queue, Empty
 from threading import Thread
-from typing import TYPE_CHECKING, List, Iterator, NamedTuple, IO, Optional
+from typing import TYPE_CHECKING, List, NamedTuple, IO, Optional
 
 import botocore.config
 
@@ -10,9 +10,10 @@ if TYPE_CHECKING:
     from mypy_boto3_ebs.client import EBSClient
     from mypy_boto3_ebs.type_defs import BlockTypeDef
     from mypy_boto3_ec2.client import EC2Client
-    from mypy_boto3_ec2.type_defs import SnapshotTypeDef
+    from mypy_boto3_ec2 import type_defs as ec2_t
 
 import boto3.session
+import boto3.resources
 
 MEGABYTE: int = 1024 * 1024
 GIBIBYTE: int = 1024 * MEGABYTE
@@ -40,6 +41,7 @@ class Snapshot:
         # Make sure the number of connections matches the number of threads we run when fetching the EBS snapshot
         ebs_config = botocore_conf.merge(botocore.config.Config(max_pool_connections=FETCH_THREADS))
         self.ebs: EBSClient = boto3_session.client('ebs', config=ebs_config)
+        self.ec2: EC2Client = boto3_session.client('ec2')
 
         self.volume_size_b = 0
         self.total_blocks = 0
@@ -66,14 +68,15 @@ class Snapshot:
 
         return blocks
 
+    def get_base(self):
+        resp: ec2_t.DescribeSnapshotsResultTypeDef = self.ec2.describe_snapshots(SnapshotIds=self.snapshot_id)
+        volume_id = resp['Snapshots'][0]['VolumeId']
+
+
     def download(self, output_file: str):
         assert output_file
         self.output_file = os.path.abspath(output_file)
-
-        with open(output_file, 'wb') as f:
-            logging.info(f"Truncating file to {self.volume_size_b}")
-            f.truncate(self.volume_size_b)
-            f.flush()
+        self.truncate()
 
         threads = list()
         for i in range(FETCH_THREADS):
@@ -93,11 +96,17 @@ class Snapshot:
 
         print(f"Output Path: {output_file}")
 
+    def truncate(self):
+        with open(self.output_file, 'wb') as f:
+            logging.info(f"Truncating file to {self.volume_size_b}")
+            f.truncate(self.volume_size_b)
+            f.flush()
+
     def _write_blocks_worker(self):
         while self.total_blocks != self.blocks_written:
             try:
                 block: 'BlockTypeDef' = self.queue.get(timeout=0.2)
-                self.write_block(self.fetch_block(block))
+                self._write_block(self._fetch_block(block))
                 self.blocks_written += 1
                 print(f"Saved block {self.blocks_written} of {self.total_blocks}", end='\r')
                 self.queue.task_done()
@@ -108,7 +117,7 @@ class Snapshot:
                     logging.exception(f"[ERROR] {e.args}")
                     raise e
 
-    def fetch_block(self, block: 'BlockTypeDef') -> Block:
+    def _fetch_block(self, block: 'BlockTypeDef') -> Block:
         logging.debug(f"Getting block index {block['BlockIndex']}")
         resp = self.ebs.get_snapshot_block(
             SnapshotId=self.snapshot_id,
@@ -123,7 +132,7 @@ class Snapshot:
             BlockData=resp['BlockData'],
         )
 
-    def write_block(self, block: Block) -> int:
+    def _write_block(self, block: Block) -> int:
         logging.debug(f"Writing block at offset {block.Offset}")
         """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
         with os.fdopen(os.open(self.output_file, os.O_RDWR | os.O_CREAT), 'rb+') as f:
