@@ -38,7 +38,7 @@ Select Volume: 0
 No snapshots found, create one? [y/N]: y
 Creating snapshot for Instance(s): i-01f0841393cd39f06 /dev/sdb, Volume: vol-0a1aab48b0bc3039d
 Waiting for snapshot to complete.
-Output Path: /Users/ryangerstenkorn/Code/dsnap/output.img
+Output Path: /cwd/output.img
 Cleaning up snapshot: snap-0543a8681adce0086
 ```
 
