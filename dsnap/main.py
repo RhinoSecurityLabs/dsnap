@@ -1,4 +1,3 @@
-import botocore.exceptions
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional

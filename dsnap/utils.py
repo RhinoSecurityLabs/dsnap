@@ -111,7 +111,7 @@ def create_tmp_snap(vol: 'r.Volume') -> 'r.Snapshot':
     return snap
 
 
-def sha256_check(data: str, digest: str) -> bool:
+def sha256_check(data: bytes, digest: str) -> bool:
     """Runs sha256 on data and compares it to digest, returns true if these values match.
 
     digest is expected to be a base64 encoded result of the binary digest.

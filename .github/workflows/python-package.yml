@@ -26,14 +26,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        pip install poetry
+        poetry install -E cli
     - name: Lint with flake8
       run: |
-        make flake8
+        poetry run make flake8
     - name: Type checking with mypy
       run: |
-        make mypy
+        poetry run make mypy
     - name: Test with pytest
       run: |
-        make test
+        poetry run make test

@@ -1,11 +1,9 @@
 import logging
-import hashlib
 import os
-from base64 import b64decode, b64encode
 from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread
-from typing import TYPE_CHECKING, List, NamedTuple, IO
+from typing import TYPE_CHECKING, List, NamedTuple
 
 import botocore.config
 from botocore.response import StreamingBody
@@ -15,7 +13,6 @@ from dsnap.utils import sha256_check
 if TYPE_CHECKING:
     from mypy_boto3_ebs.client import EBSClient
     from mypy_boto3_ebs.type_defs import BlockTypeDef
-    from mypy_boto3_ec2.client import EC2Client
 
 import boto3.resources
 
@@ -134,7 +131,6 @@ class Snapshot:
             Checksum=resp['Checksum']
         )
 
-
     def _write_block(self, block: Block) -> int:
         logging.debug(f"Writing block at offset {block.Offset}")
         """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
@@ -149,4 +145,3 @@ class Snapshot:
             bytes_written = f.write(data)
             f.flush()
             return bytes_written
-
