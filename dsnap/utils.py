@@ -1,6 +1,9 @@
 import atexit
+import hashlib
 import json
+import logging
 import signal
+from base64 import b64encode
 
 import sys
 from typing import List, Iterable, Dict, cast, Optional
@@ -106,3 +109,17 @@ def create_tmp_snap(vol: 'r.Volume') -> 'r.Snapshot':
     print("Waiting for snapshot to complete.")
     snap.wait_until_completed()
     return snap
+
+
+def sha256_check(data: str, digest: str) -> bool:
+    """Runs sha256 on data and compares it to digest, returns true if these values match.
+
+    digest is expected to be a base64 encoded result of the binary digest.
+    """
+    m = hashlib.sha256()
+    m.update(data)
+    chksum = b64encode(m.digest()).decode()
+    result = chksum == digest
+    if not result:
+        logging.error(f'Expected checksum {digest} but got {chksum}')
+    return result
