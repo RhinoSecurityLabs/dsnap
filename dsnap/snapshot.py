@@ -1,5 +1,7 @@
 import logging
+import hashlib
 import os
+from base64 import b64decode, b64encode
 from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread
@@ -131,6 +133,7 @@ class Snapshot:
             Checksum=resp['Checksum']
         )
 
+
     def _write_block(self, block: Block) -> int:
         logging.debug(f"Writing block at offset {block.Offset}")
         """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
@@ -145,3 +148,4 @@ class Snapshot:
             bytes_written = f.write(data)
             f.flush()
             return bytes_written
+
