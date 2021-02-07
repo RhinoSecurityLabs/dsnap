@@ -1,15 +1,14 @@
-import os
+import botocore.exceptions
 import sys
-from enum import Enum
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import boto3
-import boto3.session
 from typer import Argument, Option, Typer
 
+from dsnap import utils
 from dsnap.snapshot import Snapshot
-from dsnap.utils import item_prompt, create_tmp_snap, ask_to_run
+from dsnap.utils import ask_to_create_snapshot
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import service_resource as r
@@ -18,67 +17,67 @@ app = Typer()
 
 sess: boto3.session.Session = boto3.session.Session()
 
-
-class Output(str, Enum):
-    list = "list"
-    json = "json"
+# This gets set via @app.callback before any command runs.
+ec2: 'r.EC2ServiceResource' = None  # type: ignore[assignment]
 
 
 @app.callback()
 def session(region: str = Option(default='us-east-1'), profile: str = Option(default=None)):
-    global sess
+    global sess, ec2
     sess = boto3.session.Session(region_name=region, profile_name=profile)
+    ec2 = sess.resource('ec2')
 
 
 @app.command("list")
-def list_snapshots(format: Output = Output.list):
-    EC2(boto3_session=sess).list_snapshots(format, OwnerIds=['self'])
+def list_snapshots():
+    print("           Id          |   Owneer ID   | Description")
+    ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
+    for snap in ec2.snapshots.filter(OwnerIds=['self']).all():
+        print(f"{snap.id}   {snap.owner_id}   {snap.description}")
 
 
-# Called if no snapshot_id is specified when running get
-def instance_prompt(value: Optional[str]) -> str:
+def instance_prompt(value: str):
     if value:
         return value
     else:
-        ec2 = sess.resource('ec2')
-        instances = ec2.instances.filter(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
-        inst: 'r.Instance' = item_prompt(instances, jmespath_msg='[PrivateDnsName, VpcId, SubnetId]')
-        snap = volume_prompt(inst)
-        return snap and snap.snapshot_id
-
-
-def snapshot_prompt(vol: 'r.Volume') -> 'r.Snapshot':
-    snap: 'r.Snapshot'
-    snaps = list(vol.snapshots.all())
-    if len(snaps) == 0:
-        snap = ask_to_run("No snapshots found, create one?", lambda: create_tmp_snap(vol))
-    elif len(snaps) == 1:
-        snap = snaps[0]
-    else:
-        snap = item_prompt(snaps, jmespath_msg='[StartTime, OwnerId, Description]')
-    return snap
-
-
-def volume_prompt(inst) -> 'r.Snapshot':
-    vols: List['r.Volume'] = list(inst.volumes.all())
-    vol = vols[0] if len(vols) == 1 else item_prompt(vols, jmespath_msg='Attachments[*].Device')
-    return snapshot_prompt(vol)
+        try:
+            assert ec2
+            inst = utils.instance_prompt(ec2.instances.filter(
+                Filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+            ))
+            vol = utils.volume_prompt(inst.volumes)
+            snap = utils.snapshot_prompt(vol.snapshots) or ask_to_create_snapshot(vol)
+            return snap and snap.snapshot_id
+        except UserWarning as e:
+            print(*e.args)
+            sys.exit(1)
 
 
 @app.command()
-def get(id: str = Argument(default=None, callback=instance_prompt), output: Path = Option(Path("output.img"))):
-    if not id:
-        # id is None when user doesn't complete the instance_prompt
-        print("Exiting...")
-        sys.exit()
-    elif id.startswith('snap-'):
-        snap = Snapshot(id, sess)
+def get(id: str = Argument(default=None, callback=instance_prompt), output: Optional[Path] = None):
+    if id.startswith('snap-'):
+        snap_id = id
     elif id.startswith('i-'):
-        ec2: r.EC2ServiceResource = sess.resource('ec2')
-        vol: r.Volume = volume_prompt(ec2.Instance(id))
-        snap = Snapshot(vol.snapshot_id, boto3_session=sess)
+        vol = utils.volume_prompt(ec2.Instance(id).volumes)
+        snap_id = (utils.snapshot_prompt(vol.snapshots) or ask_to_create_snapshot(vol)).snapshot_id
     else:
-        # Otherwise something was specified but we don't know what
-        print("Unknown argument type, first argument should be an Instance Id or Snapshot Id")
+        if not id:    # id is None when user doesn't complete the instance_prompt
+            print("Exiting...")
+        else:         # Otherwise something was specified but we don't know what
+            print("Unknown argument type, first argument should be an Instance Id or Snapshot Id")
+        sys.exit(1)
 
-    snap.download(output.absolute().as_posix())
+    try:
+        snap = Snapshot(snap_id, boto3_session=sess)
+        path = output and output.absolute().as_posix()
+        snap.download(path or f"{id}.img")
+    except UserWarning as e:
+        print(*e.args)
+        sys.exit(2)
+    except Exception as e:
+        resp = getattr(e, 'response', None)
+        if resp and resp['Error']['Message']:
+            print(resp['Error']['Message'])
+            sys.exit(1)
+        else:
+            raise e

@@ -1,8 +1,9 @@
 import logging
 import os
+from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread
-from typing import TYPE_CHECKING, List, NamedTuple, IO, Optional
+from typing import TYPE_CHECKING, List, NamedTuple, IO
 
 import botocore.config
 
@@ -10,9 +11,7 @@ if TYPE_CHECKING:
     from mypy_boto3_ebs.client import EBSClient
     from mypy_boto3_ebs.type_defs import BlockTypeDef
     from mypy_boto3_ec2.client import EC2Client
-    from mypy_boto3_ec2 import type_defs as ec2_t
 
-import boto3.session
 import boto3.resources
 
 MEGABYTE: int = 1024 * 1024
@@ -31,7 +30,7 @@ class Snapshot:
             self,
             snapshot_id: str,
             boto3_session: boto3.session.Session = boto3.session.Session(region_name='us-east-1'),
-            botocore_conf: Optional[botocore.config.Config] = botocore.config.Config()
+            botocore_conf: botocore.config.Config = botocore.config.Config()
     ) -> None:
         self.snapshot_id = snapshot_id
         self.output_file = ''
@@ -39,7 +38,7 @@ class Snapshot:
         self.queue: Queue = Queue()
 
         # Make sure the number of connections matches the number of threads we run when fetching the EBS snapshot
-        ebs_config = botocore_conf.merge(botocore.config.Config(max_pool_connections=FETCH_THREADS))
+        ebs_config = botocore.config.Config(max_pool_connections=FETCH_THREADS).merge(botocore_conf)
         self.ebs: EBSClient = boto3_session.client('ebs', config=ebs_config)
         self.ec2: EC2Client = boto3_session.client('ec2')
 
@@ -68,13 +67,11 @@ class Snapshot:
 
         return blocks
 
-    def get_base(self):
-        resp: ec2_t.DescribeSnapshotsResultTypeDef = self.ec2.describe_snapshots(SnapshotIds=self.snapshot_id)
-        volume_id = resp['Snapshots'][0]['VolumeId']
-
-
-    def download(self, output_file: str):
+    def download(self, output_file: str, force: bool = False):
         assert output_file
+        if Path(output_file).exists() and not force:
+            raise UserWarning(f"The output file '{output_file}' already exists.")
+
         self.output_file = os.path.abspath(output_file)
         self.truncate()
 

@@ -6,8 +6,11 @@ flake8:
 
 lint: flake8 mypy
 
-mypy:
-	mypy dsnap
+stubgen:
+	test -d stubs || stubgen --include-private -o stubs -p boto3 -p stubs.boto3.resources.base -p botocore -p jmespath
+
+mypy: stubgen
+	MYPYPATH="${PWD}/stubs" mypy --show-error-codes dsnap
 
 clean:
 	rm -rf .mypy_cache/
