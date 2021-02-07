@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 def get_tag(tags: Iterable[Dict[str, str]], key: str) -> str:
     if not tags:
         return ''
-    name_tag = filter(lambda t: t['Key'] == 'Name', tags)
-    return next(map(lambda t: t['Value'], name_tag), default='')
+    name_tag = filter(lambda t: t['Key'] == key, tags)
+    return next(map(lambda t: t['Value'], name_tag), '')
 
 
 def get_name_tag(tags: List[dict]) -> str:
