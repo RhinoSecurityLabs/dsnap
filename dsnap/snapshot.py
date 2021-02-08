@@ -50,8 +50,6 @@ class Snapshot:
         self.blocks_written = 0
         self.block_size_b = 0
 
-        self.get_blocks()
-
     def get_blocks(self) -> List['BlockTypeDef']:
         resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id)
 
@@ -72,6 +70,7 @@ class Snapshot:
 
     def download(self, output_file: str, force: bool = False):
         assert output_file
+        self.get_blocks()
 
         if Path(output_file).exists() and not force:
             raise UserWarning(f"The output file '{output_file}' already exists.")
@@ -134,7 +133,6 @@ class Snapshot:
             Checksum=resp['Checksum']
         )
 
-
     def _write_block(self, block: Block) -> int:
         logging.debug(f"Writing block at offset {block.Offset}")
         """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
@@ -149,4 +147,3 @@ class Snapshot:
             bytes_written = f.write(data)
             f.flush()
             return bytes_written
-
