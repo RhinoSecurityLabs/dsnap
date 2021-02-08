@@ -1,7 +1,6 @@
 import logging
-import hashlib
 import os
-from base64 import b64decode, b64encode
+import sys
 from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread
@@ -51,6 +50,8 @@ class Snapshot:
         self.blocks_written = 0
         self.block_size_b = 0
 
+        self.get_blocks()
+
     def get_blocks(self) -> List['BlockTypeDef']:
         resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id)
 
@@ -98,7 +99,7 @@ class Snapshot:
 
     def truncate(self):
         with open(self.output_file, 'wb') as f:
-            logging.info(f"Truncating file to {self.volume_size_b}")
+            print(f"Truncating file to {self.volume_size_b}", file=sys.stderr)
             f.truncate(self.volume_size_b)
             f.flush()
 
@@ -108,7 +109,7 @@ class Snapshot:
                 block: 'BlockTypeDef' = self.queue.get(timeout=0.2)
                 self._write_block(self._fetch_block(block))
                 self.blocks_written += 1
-                print(f"Saved block {self.blocks_written} of {self.total_blocks}", end='\r')
+                print(f"Saved block {self.blocks_written} of {self.total_blocks}", end='\r', file=sys.stderr)
                 self.queue.task_done()
             except Exception as e:
                 if isinstance(e, Empty):
