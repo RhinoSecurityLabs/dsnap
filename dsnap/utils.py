@@ -9,7 +9,7 @@ import sys
 from typing import List, Iterable, Dict, cast, Optional
 import jmespath
 
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from boto3.resources.base import ServiceResource
 from boto3.resources.collection import ResourceCollection
