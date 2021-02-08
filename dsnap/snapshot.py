@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread
@@ -69,6 +70,7 @@ class Snapshot:
 
     def download(self, output_file: str, force: bool = False):
         assert output_file
+        self.get_blocks()
 
         if Path(output_file).exists() and not force:
             raise UserWarning(f"The output file '{output_file}' already exists.")
@@ -96,7 +98,7 @@ class Snapshot:
 
     def truncate(self):
         with open(self.output_file, 'wb') as f:
-            logging.info(f"Truncating file to {self.volume_size_b}")
+            print(f"Truncating file to {self.volume_size_b}", file=sys.stderr)
             f.truncate(self.volume_size_b)
             f.flush()
 
@@ -106,7 +108,7 @@ class Snapshot:
                 block: 'BlockTypeDef' = self.queue.get(timeout=0.2)
                 self._write_block(self._fetch_block(block))
                 self.blocks_written += 1
-                print(f"Saved block {self.blocks_written} of {self.total_blocks}", end='\r')
+                print(f"Saved block {self.blocks_written} of {self.total_blocks}", end='\r', file=sys.stderr)
                 self.queue.task_done()
             except Exception as e:
                 if isinstance(e, Empty):
