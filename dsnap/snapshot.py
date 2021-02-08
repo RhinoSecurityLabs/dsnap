@@ -3,14 +3,16 @@ import os
 from pathlib import Path
 from queue import Queue, Empty
 from threading import Thread
-from typing import TYPE_CHECKING, List, NamedTuple, IO
+from typing import TYPE_CHECKING, List, NamedTuple
 
 import botocore.config
+from botocore.response import StreamingBody
+
+from dsnap.utils import sha256_check
 
 if TYPE_CHECKING:
     from mypy_boto3_ebs.client import EBSClient
     from mypy_boto3_ebs.type_defs import BlockTypeDef
-    from mypy_boto3_ec2.client import EC2Client
 
 import boto3.resources
 
@@ -21,8 +23,9 @@ FETCH_THREADS = 30
 
 
 class Block(NamedTuple):
-    BlockData: IO[bytes]
+    BlockData: StreamingBody
     Offset: int
+    Checksum: str
 
 
 class Snapshot:
@@ -40,14 +43,11 @@ class Snapshot:
         # Make sure the number of connections matches the number of threads we run when fetching the EBS snapshot
         ebs_config = botocore.config.Config(max_pool_connections=FETCH_THREADS).merge(botocore_conf)
         self.ebs: EBSClient = boto3_session.client('ebs', config=ebs_config)
-        self.ec2: EC2Client = boto3_session.client('ec2')
 
         self.volume_size_b = 0
         self.total_blocks = 0
         self.blocks_written = 0
         self.block_size_b = 0
-
-        self.get_blocks()
 
     def get_blocks(self) -> List['BlockTypeDef']:
         resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id)
@@ -69,6 +69,7 @@ class Snapshot:
 
     def download(self, output_file: str, force: bool = False):
         assert output_file
+
         if Path(output_file).exists() and not force:
             raise UserWarning(f"The output file '{output_file}' already exists.")
 
@@ -127,13 +128,20 @@ class Snapshot:
         return Block(
             Offset=block['BlockIndex'] * self.block_size_b,
             BlockData=resp['BlockData'],
+            Checksum=resp['Checksum']
         )
 
     def _write_block(self, block: Block) -> int:
         logging.debug(f"Writing block at offset {block.Offset}")
         """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
+
+        data = block.BlockData.read()
+
+        if not sha256_check(data, block.Checksum):
+            raise UserWarning(f"Got block with incorrect checksum at block offset {block.Offset}")
+
         with os.fdopen(os.open(self.output_file, os.O_RDWR | os.O_CREAT), 'rb+') as f:
             f.seek(block.Offset)
-            bytes_written = f.write(block.BlockData.read())
+            bytes_written = f.write(data)
             f.flush()
             return bytes_written

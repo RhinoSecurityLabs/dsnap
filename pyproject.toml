@@ -21,6 +21,7 @@ pytest = "^5.2"
 flake8 = "^3.8.4"
 mypy = "^0.800"
 boto3-stubs = {extras = ["ebs", "ec2"], version = "^1.16.63"}
+moto = {extras = ["ebs", "ec2"], version = "^1.3.16"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
