@@ -45,9 +45,7 @@ Cleaning up snapshot: snap-0543a8681adce0086
 ```
 
 ### Mounting in Vagrant
-This requires virtualbox to be installed.
-
-dsnap init will write a Vagrantfile to the current directory that can be used to mount a specific downloaded snapshot.
+This requires virtualbox to be installed. dsnap init will write a Vagrantfile to the current directory that can be used to mount a specific downloaded snapshot.
 
 ```
 % dsnap init
