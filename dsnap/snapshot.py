@@ -51,6 +51,10 @@ class Snapshot:
         self.block_size_b = 0
 
     def get_blocks(self) -> List['BlockTypeDef']:
+        """Retrieves the list of blocks for self.snapshot_id.
+
+        This is called by self.download and doesn't need to be called explicitly before hand.
+        """
         resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id)
 
         self.block_size_b = resp['BlockSize']
@@ -68,7 +72,12 @@ class Snapshot:
 
         return blocks
 
-    def download(self, output_file: str, force: bool = False):
+    def download(self, output_file: str, force: bool = False) -> None:
+        """Downloads self.snapshot_id to the given output_file.
+
+        If force is true output_file will be overwritten.
+        """
+
         assert output_file
         self.get_blocks()
 
@@ -96,13 +105,14 @@ class Snapshot:
 
         print(f"Output Path: {output_file}")
 
-    def truncate(self):
+    def truncate(self) -> None:
+        """Truncates self.output_file to size self.volume_size_b."""
         with open(self.output_file, 'wb') as f:
             print(f"Truncating file to {self.volume_size_b}", file=sys.stderr)
             f.truncate(self.volume_size_b)
             f.flush()
 
-    def _write_blocks_worker(self):
+    def _write_blocks_worker(self) -> None:
         while self.total_blocks != self.blocks_written:
             try:
                 block: 'BlockTypeDef' = self.queue.get(timeout=0.2)
@@ -134,9 +144,8 @@ class Snapshot:
         )
 
     def _write_block(self, block: Block) -> int:
-        logging.debug(f"Writing block at offset {block.Offset}")
         """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
-
+        logging.debug(f"Writing block at offset {block.Offset}")
         data = block.BlockData.read()
 
         if not sha256_check(data, block.Checksum):
