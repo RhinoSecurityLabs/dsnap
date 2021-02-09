@@ -26,7 +26,7 @@ snap-0dbb0347f47e38b96   922105094392   completed
 ### Downloading a Snapshot
 ```
 % dsnap --profile demo get snap-0dbb0347f47e38b96
-Output Path: /cwd/output.img
+Output Path: /cwd/snap-0dbb0347f47e38b96.img
 ```
 
 If you don't specify a snapshot  you'll get a prompt to ask which one you want to download:
@@ -40,16 +40,16 @@ Select Volume: 0
 No snapshots found, create one? [y/N]: y
 Creating snapshot for Instance(s): i-01f0841393cd39f06 /dev/sdb, Volume: vol-0a1aab48b0bc3039d
 Waiting for snapshot to complete.
-Output Path: /cwd/output.img
+Output Path: /cwd/snap-0dbb0347f47e38b96.img
 Cleaning up snapshot: snap-0543a8681adce0086
 ```
 
 ### Mounting in Vagrant
-This requires virtualbox to be installed. dsnap init will write a Vagrantfile to the current directory that can be used to mount a specific downloaded snapshot.
+This requires virtualbox to be installed. dsnap init will write a Vagrantfile to the current directory that can be used to mount a specific downloaded snapshot. Conversion to a VDI disk is handled in the Vagrantfile, it will look for the disk file specified in the IMAGE environment variable, convert it to a VDI using `VBoxManage convertdd`. The resulting VDI is destroyed when the Vagrant box is, however the original raw .img file will remain and can be reused as needed.
 
 ```
 % dsnap init
-% IMAGE=snap-0543a8681adce0086 vagrant up
+% IMAGE=snap-0543a8681adce0086.img vagrant up
 % vagrant ssh
 ```
 
@@ -67,7 +67,7 @@ make docker/build
 #### Run Guestfish Shell
 
 ```
-IMAGE=output.img make docker/run
+IMAGE=snap-0dbb0347f47e38b96.img make docker/run
 ```
 
 This will take a second to start up. After it drops you into the shell you should be able to run commands like ls, cd, cat. However worth noting they don't always behave exactly like they do in a normal shell.
@@ -77,8 +77,8 @@ The output will give you the basics of how to use the guestfish shell. For a ful
 Below is an example of starting the shell and printing the contents of /etc/os-release.
 
 ```
-% IMAGE=output2.img make docker/run
-docker run -it -v "/cwd/dsnap/output2.img:/disks/output2.img" -w /disks mount --ro -a "output2.img" -m /dev/sda1:/
+% IMAGE=snap-0dbb0347f47e38b96.img make docker/run
+docker run -it -v "/cwd/dsnap/snap-0dbb0347f47e38b96.img:/disks/snap-0dbb0347f47e38b96.img" -w /disks mount --ro -a "snap-0dbb0347f47e38b96.img" -m /dev/sda1:/
 
 Welcome to guestfish, the guest filesystem shell for
 editing virtual machine filesystems and disk images.
