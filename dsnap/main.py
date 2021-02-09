@@ -24,9 +24,25 @@ ec2: 'r.EC2ServiceResource' = None  # type: ignore[assignment]
 
 @app.callback()
 def session(region: str = Option(default='us-east-1'), profile: str = Option(default=None)):
+    """This is function set's up various global settings.
+
+    It is called by Typer before any of the other commands run due to the @app.callback decorator.
+    """
     global sess, ec2
     sess = boto3.session.Session(region_name=region, profile_name=profile)
     ec2 = sess.resource('ec2')
+
+
+@app.command()
+def init():
+    """Initializes the current working directory with a templated Vagrantfile for mounting downloaded images"""
+    template = Path(__file__).parent.joinpath(Path('templates/Vagrantfile'))
+    out = Path('Vagrantfile')
+    if out.exists():
+        logging.error("This directory already contains a Vagrantfile.")
+        sys.exit(101)
+    else:
+        out.write_text(template.read_text())
 
 
 @app.command("list")
