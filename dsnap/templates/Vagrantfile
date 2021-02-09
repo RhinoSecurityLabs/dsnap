@@ -33,5 +33,6 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", inline: <<-SHELL
     sudo mkdir /mnt/snapshot
     sudo mount -o ro /dev/sdb1 /mnt/snapshot
+    echo 'cd /mnt/snapshot' >> ~vagrant/.profile
   SHELL
 end
