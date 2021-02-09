@@ -7,10 +7,27 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "vagrant", "/vagrant"
 
-  image = ENV['IMAGE']
+
+  if ARGV[0] === 'up'
+    image = ENV['IMAGE']
+    if image === nil
+      puts "Usage: IMAGE='path/to/snapshot.img' vagrant #{ARGV.join( ' ' )}"
+      exit(1)
+    elsif image.end_with? '.img'
+      vdi = image.sub('.img', '.vdi')
+      if ::File.exist? vdi
+          puts "[WARN] A vdi image of #{image} already exists at #{vdi}, will use the existing #{vdi}"
+      else
+          system('VBoxManage', 'convertdd', image, vdi)
+          raise Exception.new "failed to convert #{image} to a vdi" unless $?.success?
+          puts "[INFO] Created a new VDI image of #{image} at #{vdi}"
+      end
+    end
+  end
+
   config.vm.provider "virtualbox" do |vb|
     vb.memory = "1024"
-    vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', image]
+    vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vdi]
   end
 
   config.vm.provision "shell", inline: <<-SHELL
