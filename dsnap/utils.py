@@ -159,12 +159,12 @@ def sha256_check(data: bytes, digest: str) -> bool:
     return result
 
 
-def init_vagrant(out_dir: Path = Path('.'), force=False) -> Path:
+def init_vagrant(out_dir: Path = Path('.'), force=False) -> Optional[Path]:
     """Initializes out_dir directory with a templated Vagrantfile for mounting downloaded images"""
     template = Path(__file__).parent.joinpath(Path('templates/Vagrantfile'))
     out = out_dir.joinpath(Path('Vagrantfile').name)
     if out.exists() and not force:
-        return ''
+        return None
     else:
         out.write_text(template.read_text())
         return out
