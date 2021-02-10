@@ -34,15 +34,12 @@ def session(region: str = Option(default='us-east-1'), profile: str = Option(def
 
 
 @app.command()
-def init():
-    """Initializes the current working directory with a templated Vagrantfile for mounting downloaded images"""
-    template = Path(__file__).parent.joinpath(Path('templates/Vagrantfile'))
-    out = Path('Vagrantfile')
-    if out.exists():
-        logging.error("This directory already contains a Vagrantfile.")
-        sys.exit(101)
+def init(out_dir: Path = Path('.'), force: bool = False):
+    output = utils.init_vagrant(out_dir, force)
+    if output:
+        print(f"Wrote Vagrantfile to {output}")
     else:
-        out.write_text(template.read_text())
+        print(f"Vagrantfile already exists at {output}, use the --force to overwrite.")
 
 
 @app.command("list")

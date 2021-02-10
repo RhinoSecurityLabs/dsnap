@@ -4,6 +4,7 @@ import json
 import logging
 import signal
 from base64 import b64encode
+from pathlib import Path
 
 import boto3
 import sys
@@ -156,3 +157,14 @@ def sha256_check(data: bytes, digest: str) -> bool:
     if not result:
         logging.error(f'Expected checksum {digest} but got {chksum}')
     return result
+
+
+def init_vagrant(out_dir: Path = Path('.'), force=False) -> Path:
+    """Initializes out_dir directory with a templated Vagrantfile for mounting downloaded images"""
+    template = Path(__file__).parent.joinpath(Path('templates/Vagrantfile'))
+    out = out_dir.joinpath(Path('Vagrantfile').name)
+    if out.exists() and not force:
+        return ''
+    else:
+        out.write_text(template.read_text())
+        return out
