@@ -42,5 +42,5 @@ jobs:
         git push github HEAD:main
     - name: Build and publish
       run: |
-        poetry publish --build -u "${{ secrets.PYPI_USERNAME }}" -p "${{ secrets.PYPI_PASSWORD }}"
+        poetry publish --build -u "__token__" -p "${{ secrets.PYPI_TOKEN }}"
 
