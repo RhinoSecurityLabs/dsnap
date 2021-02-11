@@ -9,7 +9,7 @@ from typer import Argument, Option, Typer
 
 from dsnap import utils
 from dsnap.snapshot import Snapshot
-from dsnap.utils import ask_to_create_snapshot, full_prompt
+from dsnap.prompt import snap_id_from_input
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import service_resource as r
@@ -52,24 +52,18 @@ def list_snapshots():
 
 @app.command()
 def get(id: str = Argument(None), output: Optional[Path] = None):
-    if id.startswith('snap-'):
-        snap_id = id
-    elif id.startswith('i-'):
-        vol = utils.volume_prompt(ec2.Instance(id).volumes)
-        snap_id = (utils.snapshot_prompt(vol.snapshots) or ask_to_create_snapshot(vol)).snapshot_id
-    elif not id:
-        snap_id = full_prompt(sess)
-        if not snap_id:
-            print("Exiting...")
-    else:
-        print("Unknown argument type, first argument should be an Instance Id or Snapshot Id")
+    # snap_id will be None in cases of invalid argument or no snapshot was selected
+    try:
+        snap_id = snap_id_from_input(sess, id)
+    except UserWarning as e:
+        print(*e.args, '\nExiting...')
         sys.exit(1)
 
     try:
         logging.info(f"Selected snapshot with id {snap_id}")
         snap = Snapshot(snap_id, boto3_session=sess)
         path = output and output.absolute().as_posix()
-        snap.download(path or f"{id}.img")
+        snap.download(path or f"{snap.snapshot_id}.img")
     except UserWarning as e:
         print(*e.args)
         sys.exit(2)
