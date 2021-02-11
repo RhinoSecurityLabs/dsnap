@@ -8,9 +8,8 @@ Utility for downloading EBS snapshots using the EBS Direct API's.
 
 ### PyPi
 
-NOTE: This won't work until this package is published, for now see [Development](#Development)
-
 ```
+% pip install -U pip
 % pip install 'dsnap[cli]'
 ```
 
