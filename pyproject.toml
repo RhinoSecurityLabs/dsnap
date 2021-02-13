@@ -10,11 +10,12 @@ dsnap = "dsnap.main:app"
 
 [tool.poetry.dependencies]
 python = "^3.6"
-boto3 = "^1.16.63"
+boto3 = "^1.16.0"
 typer = { version = "^0.3.2", optional = true }
 
 [tool.poetry.extras]
 cli = ["typer"]
+scannerd = ["cfn-lint", "aws-sam-cli"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
@@ -22,6 +23,8 @@ flake8 = "^3.8.4"
 mypy = "^0.800"
 boto3-stubs = {extras = ["ebs", "ec2"], version = "^1.16.63"}
 moto = {extras = ["ebs", "ec2"], version = "^1.3.16"}
+cfn-lint = {version = "^0.44.7", optional = true}
+aws-sam-cli = {version = "^1.18.1", optional = true}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from botocore.response import StreamingBody
+from mypy_boto3_ebs.type_defs import BlockTypeDef
 
 from dsnap import snapshot as s
 
@@ -10,10 +11,10 @@ from .test_aws import session, boto_conf, aws_credentials  # noqa: F401
 
 
 @pytest.fixture(scope='function')
-def snapshot(session, boto_conf, tmp_path: Path):
-    snap = s.Snapshot('test-snapshot', session, boto_conf)
+def local_snapshot(session, boto_conf, tmp_path: Path):
+    snap = s.LocalSnapshot('./test-snapshot.img', 'test-snapshot', session, boto_conf)
 
-    snap.output_file = str((tmp_path / 'test.img').absolute())
+    snap.path = str((tmp_path / 'test.img').absolute())
 
     # EBS API isn't supported by moto yet, so mock this manually
     snap.get_blocks = lambda: print('Mocked')
@@ -23,62 +24,66 @@ def snapshot(session, boto_conf, tmp_path: Path):
     return snap
 
 
-def test_snapshot_id(snapshot: s.Snapshot):
-    snapshot.snapshot_id = 'test-snapshot'
+def test_snapshot_id(local_snapshot: s.LocalSnapshot):
+    local_snapshot.snapshot_id = 'test-snapshot'
 
 
 @pytest.fixture(scope='function')
-def truncate(snapshot: s.Snapshot, tmp_path: Path):
-    snapshot.truncate()
+def truncate(local_snapshot: s.LocalSnapshot, tmp_path: Path):
+    local_snapshot.truncate()
     return tmp_path / 'test.img'
 
 
-def test_truncate(truncate: str):
+def test_truncate(truncate: Path):
     assert truncate.stat().st_size == s.MEGABYTE
     assert truncate.read_bytes().startswith(b'\x00\x00\x00\x00\x00\x00\x00')
     assert truncate.read_bytes().endswith(b'\x00\x00\x00\x00\x00\x00\x00')
 
 
 @pytest.fixture(scope='function')
-def block(truncate, snapshot):
+def block(truncate, local_snapshot: s.LocalSnapshot):
     body = b'test1234'
-    return s.Block(
-        BlockData=StreamingBody(BytesIO(body), len(body)),
-        Offset=0,
-        Checksum='k36NX7tIvUlJU2zWW401xCa4DS+DDFwwjizexCKuIkQ=',
-    )
+    b = s.Block(local_snapshot, BlockTypeDef(
+        BlockIndex=0,
+        BlockToken="token",
+    ))
+    b.BlockData = BytesIO(body)
+    b.Checksum = "k36NX7tIvUlJU2zWW401xCa4DS+DDFwwjizexCKuIkQ="
+    return b
 
 
 @pytest.fixture(scope='function')
-def write_block(block: s.Block, snapshot: s.Snapshot):
-    written = snapshot._write_block(block)
+def write_block(block: s.Block, local_snapshot: s.LocalSnapshot):
+    written = block.write()
     assert written == 8
-    return snapshot
+    return local_snapshot
 
 
 def test_write_block(write_block: s.Snapshot):
-    with open(write_block.output_file, 'rb') as f:
+    with open(write_block.path, 'rb') as f:
         assert f.read().startswith(b'test1234\x00\x00')
 
 
 @pytest.fixture(scope='function')
-def block_offset(truncate, snapshot):
+def block_offset(truncate, local_snapshot: s.LocalSnapshot):
     body = b'test1234'
-    return s.Block(
-        BlockData=StreamingBody(BytesIO(body), len(body)),
-        Offset=524288,  # Equivalent to BlockIndex 1
-        Checksum='k36NX7tIvUlJU2zWW401xCa4DS+DDFwwjizexCKuIkQ=',
-    )
+    b = s.Block(local_snapshot, BlockTypeDef(
+        BlockIndex=1,
+        BlockToken="token",
+    ))
+    b.BlockData = BytesIO(body)
+    b.Checksum = "k36NX7tIvUlJU2zWW401xCa4DS+DDFwwjizexCKuIkQ="
+    return b
 
 
 @pytest.fixture(scope='function')
-def write_block_offset(block_offset: s.Block, snapshot: s.Snapshot):
-    written = snapshot._write_block(block_offset)
+def write_block_offset(block_offset: s.Block, local_snapshot: s.LocalSnapshot):
+    written = block_offset.write()
     assert written == 8
-    return snapshot
+    return local_snapshot
 
 
 def test_write_block_offset(write_block_offset: s.Snapshot):
-    with open(write_block_offset.output_file, 'rb') as f:
+    with open(write_block_offset.path, 'rb') as f:
         f.seek(524288)
         assert f.read().startswith(b'test1234\x00\x00')

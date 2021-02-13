@@ -1,10 +1,10 @@
 .vscode
 .idea
 *.sw?
-*.img
 *.vdi
 stubs
 tmp
 venv
 dist
 __pycache__
+samconfig.toml

@@ -22,7 +22,7 @@ docker/build:
 	docker build -f Dockerfile.mount -t dsnap-mount .
 
 docker/run:
-	docker run -it -v "${PWD}/${IMAGE}:/disks/${IMAGE}" -w /disks mount --ro -a "${IMAGE}" -m /dev/sda1:/
+	docker run -it -v "${PWD}/${IMAGE}:/disks/${IMAGE}" -w /disks dsnap-mount --ro -a "${IMAGE}" -m /dev/sda1:/
 
 test:
 	pytest ./tests

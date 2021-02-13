@@ -1,53 +1,100 @@
 import json
 import sys
-from typing import Optional, cast, List, TYPE_CHECKING
+from typing import Optional, cast, TYPE_CHECKING, TypeVar, Iterable
 
-import boto3
 import jmespath
-from boto3.resources.base import ServiceResource
 from boto3.resources.collection import ResourceCollection
 
-from dsnap.utils import get_name_tag, create_tmp_snap
+from dsnap.snapshot import LocalSnapshot
+from dsnap.utils import get_name_tag, create_tmp_snap, fatal
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import service_resource as r
 
 
-def snap_id_from_input(sess, id) -> str:
+def snaps_from_input(sess, id, devices):
     ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
     if not id:
-        snap_id = full_prompt(sess)
+        for snap in ec2.snapshots.filter(OwnerIds=['self']).all():
+            yield snap
+    elif id.startswith("i-"):
+        i: 'r.Instance' = ec2.Instance(id)
+        for d in i.block_device_mappings:
+            vol = ec2.Volume(d['Ebs']['VolumeId'])
+            for snap in vol.snapshots.all():
+                yield snap
+    else:
+        raise UserWarning(f"Unexpected argument format: {id}, use an instance id or omit the argument to list all snapshots")
+
+
+def snap_from_input(sess, id) -> 'r.Snapshot':
+    """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
+    ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
+    snap: Optional['r.Snapshot'] = None
+    vol: Optional['r.Volume'] = None
+
+    if not id:
+        inst = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
+        vol = resource_prompt(inst.volumes, 'Attachments[*].Device')
+        snap = resource_prompt(vol.snapshots, '[StartTime, OwnerId, Description]')
     elif id.startswith('snap-'):
-        snap_id = id
+        snap = ec2.Snapshot(id)
     elif id.startswith('i-'):
-        vol = volume_prompt(ec2.Instance(id).volumes)
-        snap_id = (snapshot_prompt(vol.snapshots) or ask_to_create_snapshot(vol)).snapshot_id
+        vol = resource_prompt(ec2.Instance(id).volumes, 'Attachments[*].Device')
+        snap = resource_prompt(vol.snapshots, '[StartTime, OwnerId, Description]')
+    else:
+        raise UserWarning('unknown argument type, first argument should be an Instance Id or Snapshot Id')
+
+    # snap can be None if no snapshot was found for the given volume
+    if vol and not snap:
+        snap = ask_to_create_snapshot(vol)
+        # User didn't want to create a snapshot, can't continue
+        if not snap:
+            raise UserWarning("no snapshot selected")
+
+    return snap
+
+
+def vol_from_id(sess, i: str) -> 'r.Volume':
+    """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
+    ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
+    if not i:
+        inst = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
+        vol = resource_prompt(inst.volumes, 'Attachments[*].Device')
+    elif i.startswith('vol-'):
+        vol = ec2.Volume(i)
+    elif i.startswith('i-'):
+        vol = resource_prompt(ec2.Instance(i).volumes, 'Attachments[*].Device')
     else:
         raise UserWarning("unknown argument type, first argument should be an Instance Id or Snapshot Id")
-    return snap_id
+
+    # vol will be None in cases of invalid argument or no snapshot was selected
+    if not vol:
+        fatal('Exiting...')
+
+    return vol
 
 
-def full_prompt(sess: boto3.Session) -> str:
-    """Prompts the user for all information.
-
-    This is run when dsnap get is run without any options. First we prompt for the EC2
-    instance to run against, prompt again if there's if the instance has multiple
-    volumes, prompt again for snapshot if volume has multiple snapshots.
-    """
-    ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
-    inst = instance_prompt(ec2.instances.filter(
-        Filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
-    ))
-    vol = volume_prompt(inst.volumes)
-    snap = snapshot_prompt(vol.snapshots) or ask_to_create_snapshot(vol)
-    return snap.snapshot_id
+def download_snap_id(sess, force, output, snap_id):
+    """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
+    print(f"Selected snapshot with id {snap_id}")
+    path = (output and output.absolute().as_posix()) or f"{snap_id}.img"
+    LocalSnapshot(path, snap_id, boto3_session=sess).fetch(force=force)
 
 
-def item_prompt(collection: ResourceCollection, jmespath_msg: str = None) -> ServiceResource:
+T = TypeVar('T')
+
+
+def item_prompt(resources: Iterable[T], jmespath_msg: str = None) -> T:
     """Prompt's the user for an item to select from the items passed. Item is expected to support the Item protocol."""
-    items = list(collection.all())
-    if len(items) == 0:
-        raise UserWarning(f'No items found when calling {collection._py_operation_name}')
+    resources = cast(ResourceCollection, resources)
+
+    items = list(resources.all())
+    if not resources or len(items) == 0:
+        raise UserWarning(f'no items found when calling {resources._py_operation_name}')
+    elif len(items) == 1:
+        # No need to make a selection if there's only one option
+        return list(items)[0]
 
     msg = ''
     for i, item in enumerate(items):
@@ -64,31 +111,11 @@ def item_prompt(collection: ResourceCollection, jmespath_msg: str = None) -> Ser
         return list(items)[answer]
     except IndexError:
         print(f"Invalid selection, valid inputs are 0 through {len(items) - 1}", file=sys.stderr)
-        return item_prompt(collection)
+        return item_prompt(resources)
 
 
-# Called if no snapshot_id is specified when running get
-def instance_prompt(instances: ResourceCollection) -> 'r.Instance':
-    """Prompts the user to select an EC2 Instance of passed in instances"""
-    return cast('r.Instance', item_prompt(instances, jmespath_msg='[PrivateDnsName, VpcId, SubnetId]'))
-
-
-def snapshot_prompt(snapshots: ResourceCollection) -> Optional['r.Snapshot']:
-    """Prompts the user to select a EC2 Snapshot of passed in snapshots"""
-    snaps = list(snapshots.all())
-    if len(snaps) == 0:
-        return None
-    elif len(snaps) == 1:
-        snap = snaps[0]
-    else:
-        snap = cast('r.Snapshot', item_prompt(snapshots, jmespath_msg='[StartTime, OwnerId, Description]'))
-    return snap
-
-
-def volume_prompt(volumes: ResourceCollection) -> 'r.Volume':
-    """Prompts the user to select a Volume of passed in volumes"""
-    vols: List['r.Volume'] = list(volumes.all())
-    return vols[0] if len(vols) == 1 else cast('r.Volume', item_prompt(volumes, jmespath_msg='Attachments[*].Device'))
+def resource_prompt(resources: Iterable[T], jmespath_msg='') -> T:
+    return item_prompt(resources, jmespath_msg=jmespath_msg)
 
 
 def ask_to_run(msg, func):
@@ -105,3 +132,21 @@ def ask_to_create_snapshot(vol: 'r.Volume') -> 'r.Snapshot':
     delete the snapshot on exit.
     """
     return ask_to_run("No snapshots found, create one?", lambda: create_tmp_snap(vol))
+
+
+def take_snapshot(vol: 'r.Volume') -> 'r.Snapshot':
+    # volumes can be attached to more then one instance at a time so include all attachments in the description
+    devices = ', '.join([a['Device'] for a in vol.attachments])
+    instances = ', '.join([a['InstanceId'] for a in vol.attachments])
+    desc = f"Instance(s): {instances}, Volume: {vol.id}, Device: {devices}"
+    print(f"Creating snapshot for {desc}")
+
+    snap = vol.create_snapshot(
+        Description=f'dsnap ({desc})',
+        TagSpecifications=[{
+            'ResourceType': 'snapshot',
+            'Tags': [{'Key': 'dsnap', 'Value': 'true'}]
+        }]
+    )
+    snap.wait_until_completed()
+    return snap
