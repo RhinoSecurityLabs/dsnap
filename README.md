@@ -45,7 +45,7 @@ Commands:
 
 ### Recording
 
-<a href="https://asciinema.org/a/391559" target="_blank"><img src="https://asciinema.org/a/391559.svg" /></a>
+[![asciicast](https://asciinema.org/a/391559.svg)](https://asciinema.org/a/391559)
 
 ### Listing Snapshots
 ```shell
