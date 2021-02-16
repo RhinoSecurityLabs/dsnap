@@ -45,7 +45,7 @@ Commands:
 
 ### Recording
 
-[![asciicast](https://asciinema.org/a/391559.svg)](https://asciinema.org/a/391559)
+<script id="asciicast-391559" src="https://asciinema.org/a/391559.js" async></script>
 
 ### Listing Snapshots
 ```shell
