@@ -1,0 +1,22 @@
+{
+  "version": "0",
+  "id": "01234567-0123-0123-0123-012345678901",
+  "detail-type": "EBS Snapshot Notification",
+  "source": "aws.ec2",
+  "account": "123456789012",
+  "time": "2016-11-01T13:12:22Z",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:ec2::us-east-2:snapshot/snap-02c3974406b3f3187"
+  ],
+  "detail": {
+    "event": "createSnapshot",
+    "result": "succeeded",
+    "cause": "",
+    "request-id": "",
+    "snapshot_id": "arn:aws:ec2::us-east-2:snapshot/snap-02c3974406b3f3187",
+    "source": "arn:aws:ec2::us-east-2:volume/vol-03b76fcd64d76335a",
+    "StartTime": "2020-11-01T13:00:12Z",
+    "EndTime": "2020-11-01T13:12:22Z"
+  }
+}

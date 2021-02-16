@@ -1,0 +1,6 @@
+.venv
+venv
+.vagrant
+vagrant
+.mypy_cache
+.git

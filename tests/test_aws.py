@@ -23,7 +23,8 @@ def session(aws_credentials):
 
 @pytest.fixture(scope='function')
 def boto_conf(aws_credentials):
-    yield botocore.config.Config()
+    with mock_iam():
+        yield botocore.config.Config()
 
 @pytest.fixture(scope='function')
 def ec2(session):
