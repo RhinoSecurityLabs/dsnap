@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, List
 
@@ -13,7 +12,7 @@ from dsnap.utils import fatal
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import service_resource as r
 
-app = Typer()
+app = Typer(name="dsnap", help="Utility for downloading EBS snapshots using the EBS Direct API's.")
 
 sess: boto3.session.Session = boto3.session.Session()
 
@@ -22,11 +21,10 @@ ec2: 'r.EC2ServiceResource' = None  # type: ignore[assignment]
 
 
 @app.callback()
-def session(region: str = Option(default='us-east-1'), profile: str = Option(default=None)):
-    """This is function set's up various global settings.
-
-    It is called by Typer before any of the other commands run due to the @app.callback decorator.
-    """
+def session(
+        region: str = Option(default='us-east-1', help="Sets the AWS region.", metavar="REGION"),
+        profile: str = Option(default=None, help="Shared credential profile to use.", metavar="PROFILE")
+):
     global sess, ec2
     sess = boto3.session.Session(region_name=region, profile_name=profile)
     ec2 = sess.resource('ec2')

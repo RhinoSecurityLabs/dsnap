@@ -10,31 +10,58 @@ Utility for downloading EBS snapshots using the EBS Direct API's.
 
 NOTE: This won't work until this package is published, for now see [Development](#Development)
 
-```
+```shell
 % pip install 'dsnap[cli]'
 ```
 
 ## Command Reference
 
+```shell
+% dsnap --help
+Usage: dsnap [OPTIONS] COMMAND [ARGS]...
 
+  A utility for managing snapshots via the EBS Direct API.
+
+Options:
+  --region REGION                 Sets the AWS region.  [default: us-east-1]
+  --profile PROFILE               Shared credential profile to use.
+  --install-completion [bash|zsh|fish|powershell|pwsh]
+                                  Install completion for the specified shell.
+  --show-completion [bash|zsh|fish|powershell|pwsh]
+                                  Show completion for the specified shell, to
+                                  copy it or customize the installation.
+
+  --help                          Show this message and exit.
+
+Commands:
+  create  Create a snapshot for the given instances default device volume.
+  delete  Delete a given snapshot.
+  get     Download a snapshot for a given instance or snapshot ID.
+  init    Write out a Vagrantfile template to explore downloaded snapshots.
+  list    List snapshots in AWS.
+```
 
 ## Examples
 
+### Recording
+
+[![asciicast](https://asciinema.org/a/391559.svg)](https://asciinema.org/a/391559)
+
 ### Listing Snapshots
-```
+```shell
 % dsnap list
            Id          |   Owner ID   |   State
 snap-0dbb0347f47e38b96   922105094392   completed
 ```
 
 ### Downloading a Snapshot
-```
+```shell
 % dsnap get snap-0dbb0347f47e38b96
 Output Path: /cwd/snap-0dbb0347f47e38b96.img
 ```
 
 If you don't specify a snapshot  you'll get a prompt to ask which one you want to download:
-```
+```shell
 % dsnap chris get
 0) i-01f0841393cd39f06 (ip-172-31-27-0.ec2.internal, vpc-04a91864355539a41, subnet-0e56cd55282fa9158)
 Select Instance: 0
@@ -51,7 +78,7 @@ Cleaning up snapshot: snap-0543a8681adce0086
 ### Mounting in Vagrant
 This requires virtualbox to be installed. dsnap init will write a Vagrantfile to the current directory that can be used to mount a specific downloaded snapshot. Conversion to a VDI disk is handled in the Vagrantfile, it will look for the disk file specified in the IMAGE environment variable, convert it to a VDI using `VBoxManage convertdd`. The resulting VDI is destroyed when the Vagrant box is, however the original raw .img file will remain and can be reused as needed.
 
-```
+```shell
 % dsnap init
 % IMAGE=snap-0543a8681adce0086.img vagrant up
 % vagrant ssh
@@ -62,16 +89,16 @@ This requires virtualbox to be installed. dsnap init will write a Vagrantfile to
 This uses libguestfs to work directly with the downloaded img file.
 
 #### Build Docker Container
-```
-git clone https://github.com/RhinoSecurityLabs/dsnap.git
-cd dsnap
-make docker/build
+```shell
+% git clone https://github.com/RhinoSecurityLabs/dsnap.git
+% cd dsnap
+% make docker/build
 ```
 
 #### Run Guestfish Shell
 
-```
-IMAGE=snap-0dbb0347f47e38b96.img make docker/run
+```shell
+% IMAGE=snap-0dbb0347f47e38b96.img make docker/run
 ```
 
 This will take a second to start up. After it drops you into the shell you should be able to run commands like ls, cd, cat. However worth noting they don't always behave exactly like they do in a normal shell.
@@ -80,7 +107,7 @@ The output will give you the basics of how to use the guestfish shell. For a ful
 
 Below is an example of starting the shell and printing the contents of /etc/os-release.
 
-```
+```shell
 % IMAGE=snap-0dbb0347f47e38b96.img make docker/run
 docker run -it -v "/cwd/dsnap/snap-0dbb0347f47e38b96.img:/disks/snap-0dbb0347f47e38b96.img" -w /disks mount --ro -a "snap-0dbb0347f47e38b96.img" -m /dev/sda1:/
 
@@ -109,26 +136,26 @@ HOME_URL="https://amazonlinux.com/"
 For CLI development make sure you include the `cli` extra shown below. You'll also want to invoke the package by using python's `-m` (shown below) for testing local changes, the dnsap binary installed to the environment will only update when you run pip install.
 
 ### Setup
-```
-git clone https://github.com/RhinoSecurityLabs/dsnap.git
-cd dsnap
-python3 -m venv venv
-. venv/bin/activate
-python -m pip install '.[cli]'
+```shell
+% git clone https://github.com/RhinoSecurityLabs/dsnap.git
+% cd dsnap
+% python3 -m venv venv
+% . venv/bin/activate
+% python -m pip install '.[cli]'
 ```
 
 ### Running With Local Changes
-```
-python -m dsnap --help
+```shell
+% python -m dsnap --help
 ```
 
 ### Linting and Type Checking
-```
-make lint
+```shell
+% make lint
 ```
 
 ### Testing
-```
-make test
+```shell
+% make test
 ```
 

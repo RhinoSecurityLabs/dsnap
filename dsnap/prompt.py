@@ -30,27 +30,28 @@ def snaps_from_input(sess, id, devices):
 def snap_from_input(sess, id) -> 'r.Snapshot':
     """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
     ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
-    snap: Optional['r.Snapshot'] = None
     vol: Optional['r.Volume'] = None
 
     if not id:
-        inst = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
-        vol = resource_prompt(inst.volumes, 'Attachments[*].Device')
-        snap = resource_prompt(vol.snapshots, '[StartTime, OwnerId, Description]')
+        inst: 'r.Instance' = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
+        vol = resource_prompt(inst.volumes.all(), 'Attachments[*].Device')
+        try:
+            snap = resource_prompt(cast('r.Volume', vol).snapshots.all(), '[StartTime, OwnerId, Description]')
+        except UserWarning:
+            snap = ask_to_create_snapshot(vol)
     elif id.startswith('snap-'):
         snap = ec2.Snapshot(id)
     elif id.startswith('i-'):
-        vol = resource_prompt(ec2.Instance(id).volumes, 'Attachments[*].Device')
-        snap = resource_prompt(vol.snapshots, '[StartTime, OwnerId, Description]')
+        vol = resource_prompt(ec2.Instance(id).volumes.all(), 'Attachments[*].Device')
+        try:
+            snap = resource_prompt(cast('r.Volume', vol).snapshots.all(), '[StartTime, OwnerId, Description]')
+        except UserWarning:
+            snap = ask_to_create_snapshot(vol)
     else:
         raise UserWarning('unknown argument type, first argument should be an Instance Id or Snapshot Id')
 
-    # snap can be None if no snapshot was found for the given volume
-    if vol and not snap:
-        snap = ask_to_create_snapshot(vol)
-        # User didn't want to create a snapshot, can't continue
-        if not snap:
-            raise UserWarning("no snapshot selected")
+    if not snap:
+        raise UserWarning("no snapshot selected")
 
     return snap
 
@@ -59,12 +60,12 @@ def vol_from_id(sess, i: str) -> 'r.Volume':
     """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
     ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
     if not i:
-        inst = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
-        vol = resource_prompt(inst.volumes, 'Attachments[*].Device')
+        inst: 'r.Instance' = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
+        vol: 'r.Volume' = resource_prompt(inst.volumes.all(), 'Attachments[*].Device')
     elif i.startswith('vol-'):
         vol = ec2.Volume(i)
     elif i.startswith('i-'):
-        vol = resource_prompt(ec2.Instance(i).volumes, 'Attachments[*].Device')
+        vol = resource_prompt(ec2.Instance(i).volumes.all(), 'Attachments[*].Device')
     else:
         raise UserWarning("unknown argument type, first argument should be an Instance Id or Snapshot Id")
 
@@ -114,8 +115,9 @@ def item_prompt(resources: Iterable[T], jmespath_msg: str = None) -> T:
         return item_prompt(resources)
 
 
-def resource_prompt(resources: Iterable[T], jmespath_msg='') -> T:
-    return item_prompt(resources, jmespath_msg=jmespath_msg)
+def resource_prompt(resource: 'Iterable[T]', jmespath_msg='') -> T:
+    resource = cast('ResourceCollection', resource)
+    return item_prompt(resource, jmespath_msg=jmespath_msg)
 
 
 def ask_to_run(msg, func):
