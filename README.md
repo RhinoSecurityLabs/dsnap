@@ -1,6 +1,6 @@
 ![Python package](https://github.com/RhinoSecurityLabs/dsnap/workflows/Python%20package/badge.svg?branch=main)
 
-# DSnap
+# dsnap
 
 Utility for downloading EBS snapshots using the EBS Direct API's.
 
