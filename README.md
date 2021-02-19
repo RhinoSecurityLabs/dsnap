@@ -129,6 +129,11 @@ CPE_NAME="cpe:2.3:o:amazon:amazon_linux:2"
 HOME_URL="https://amazonlinux.com/"
 ```
 
+## Library Use
+
+dsnap is also meant to be used as a library, however for this purpose it is worth keeping in mind this is an early version and it is still being developed. The interfaces will likely change as new functionality is added.
+
+We'll do our best to make sure we follow SemVer versioning to avoid any breaking changes in minor and patch versions.
 
 ## Development
 
