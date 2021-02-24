@@ -61,7 +61,7 @@ Output Path: /cwd/snap-0dbb0347f47e38b96.img
 
 If you don't specify a snapshot  you'll get a prompt to ask which one you want to download:
 ```shell
-% dsnap chris get
+% dsnap get
 0) i-01f0841393cd39f06 (ip-172-31-27-0.ec2.internal, vpc-04a91864355539a41, subnet-0e56cd55282fa9158)
 Select Instance: 0
 0) vol-0a1aab48b0bc3039d (/dev/sdb)
