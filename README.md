@@ -44,7 +44,7 @@ Commands:
 
 ### Recording
 
-[![asciicast](https://asciinema.org/a/391559.svg)](https://asciinema.org/a/391559)
+![Alt Text](./docs/demo.gif)
 
 ### Listing Snapshots
 ```shell
