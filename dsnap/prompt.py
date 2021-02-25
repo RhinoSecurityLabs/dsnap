@@ -1,18 +1,27 @@
+import atexit
 import json
+import logging
+import signal
+
 import sys
-from typing import Optional, cast, TYPE_CHECKING, TypeVar, Iterable
+from typing import cast, TYPE_CHECKING, TypeVar, Iterable
 
 import jmespath
 from boto3.resources.collection import ResourceCollection
 
 from dsnap.snapshot import LocalSnapshot
-from dsnap.utils import get_name_tag, create_tmp_snap, fatal
+from dsnap.utils import get_name_tag, fatal, cleanup_snap, take_snapshot
+
+from typer import style, colors, secho
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import service_resource as r
+    from mypy_boto3_ec2 import type_defs as t
+
+INSTANCE_FILTER: 't.FilterTypeDef' = {"Name": 'instance-state-name', "Values": ['running', 'stopped']}
 
 
-def snaps_from_input(sess, id, devices):
+def snaps_from_input(sess, id):
     ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
     if not id:
         for snap in ec2.snapshots.filter(OwnerIds=['self']).all():
@@ -30,13 +39,9 @@ def snaps_from_input(sess, id, devices):
 def snap_from_input(sess, id) -> 'r.Snapshot':
     """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
     ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
-    vol: Optional['r.Volume'] = None
 
     if not id:
-        # Make sure not to include pending instances, they won't have info like VpcId and SubnetId and will throw an error
-        inst: 'r.Instance' = resource_prompt(ec2.instances.filter(
-            Filters=[{"Name": 'instance-state-name', "Values": ['running', 'stopping', 'stopped', 'shutting-down']}]
-        ), '[PrivateDnsName, VpcId, SubnetId]')
+        inst: 'r.Instance' = resource_prompt(ec2.instances.filter(Filters=[INSTANCE_FILTER]), '[PrivateDnsName, VpcId]')
         vol = resource_prompt(inst.volumes.all(), 'Attachments[*].Device')
         try:
             snap = resource_prompt(cast('r.Volume', vol).snapshots.all(), '[StartTime, OwnerId, Description]')
@@ -63,9 +68,7 @@ def vol_from_id(sess, i: str) -> 'r.Volume':
     """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
     ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
     if not i:
-        inst: 'r.Instance' = resource_prompt(ec2.instances.filter(
-            Filters=[{"Name": 'instance-state-name', "Values": ['running', 'stopping', 'stopped', 'shutting-down']}]
-        ), '[PrivateDnsName, VpcId, SubnetId]')
+        inst: 'r.Instance' = resource_prompt(ec2.instances.filter(Filters=[INSTANCE_FILTER]), '[PrivateDnsName, VpcId]')
         vol: 'r.Volume' = resource_prompt(inst.volumes.all(), 'Attachments[*].Device')
     elif i.startswith('vol-'):
         vol = ec2.Volume(i)
@@ -83,7 +86,7 @@ def vol_from_id(sess, i: str) -> 'r.Volume':
 
 def download_snap_id(sess, force, output, snap_id):
     """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
-    print(f"Selected snapshot with id {snap_id}")
+    secho(f"Selected snapshot with id {style(snap_id, bold=True)}")
     path = (output and output.absolute().as_posix()) or f"{snap_id}.img"
     LocalSnapshot(path, snap_id, boto3_session=sess).fetch(force=force)
 
@@ -108,15 +111,21 @@ def item_prompt(resources: Iterable[T], jmespath_msg: str = None) -> T:
             # dump and load json to convert datetime and similar to something readable
             data = json.loads(json.dumps(item.meta.data, default=str))
             msg = ', '.join(jmespath.search(jmespath_msg, data=data or ''))
-        name = get_name_tag(item.tags)
-        print(f"{i}) {item.id} {name and f'Name: {name}, '}({msg})")
 
-    answer = int(input(f'Select {list(items)[0].meta.resource_model.name}: '))
+        name = get_name_tag(item.tags)
+        secho("{}".format(i), bold=True, nl=False, fg=colors.GREEN)
+
+        if name:
+            secho(") {} Name: {} ({})".format(style(item.id, underline=True, bold=True), style(name, bold=True), msg))
+        else:
+            secho(") {} ({})".format(style(item.id, bold=True), msg))
+
+    answer = int(input(style(f'Select {list(items)[0].meta.resource_model.name}:', underline=True) + ' '))
 
     try:
         return list(items)[answer]
     except IndexError:
-        print(f"Invalid selection, valid inputs are 0 through {len(items) - 1}", file=sys.stderr)
+        secho(f"Invalid selection, valid inputs are 0 through {len(items) - 1}", file=sys.stderr, fg=colors.RED)
         return item_prompt(resources)
 
 
@@ -138,22 +147,21 @@ def ask_to_create_snapshot(vol: 'r.Volume') -> 'r.Snapshot':
     If the answer is Y we start snapshot creation, wait for it to finish and register a function to
     delete the snapshot on exit.
     """
-    return ask_to_run("No snapshots found, create one?", lambda: create_tmp_snap(vol))
+    return ask_to_run(style("No snapshots found, create one?", fg=colors.RED), lambda: create_tmp_snap(vol))
 
 
-def take_snapshot(vol: 'r.Volume') -> 'r.Snapshot':
-    # volumes can be attached to more then one instance at a time so include all attachments in the description
-    devices = ', '.join([a['Device'] for a in vol.attachments])
-    instances = ', '.join([a['InstanceId'] for a in vol.attachments])
-    desc = f"Instance(s): {instances}, Volume: {vol.id}, Device: {devices}"
-    print(f"Creating snapshot for {desc}")
+def bold(s: str, **kwargs) -> str:
+    return style(s, bold=True, **kwargs)
 
-    snap = vol.create_snapshot(
-        Description=f'dsnap ({desc})',
-        TagSpecifications=[{
-            'ResourceType': 'snapshot',
-            'Tags': [{'Key': 'dsnap', 'Value': 'true'}]
-        }]
-    )
+
+def create_tmp_snap(vol: 'r.Volume') -> 'r.Snapshot':
+    """Creates a temporary snapshot that will get deleted when the process exits."""
+    secho(f'Creating snapshot from {bold(vol.id)}')
+    snap = take_snapshot(vol)
+
+    atexit.register(cleanup_snap(snap))
+    signal.signal(signal.SIGTERM, lambda sigs, type: sys.exit())
+    print("Waiting for snapshot to complete.")
     snap.wait_until_completed()
+    logging.info("Snapshot creation finished")
     return snap

@@ -3,11 +3,11 @@ from typing import TYPE_CHECKING, Optional, List
 
 import boto3
 import typer
-from typer import Option, Typer
+from typer import Option, Typer, secho, style, colors
 
 from dsnap import utils
-from dsnap.prompt import snap_from_input, download_snap_id, snaps_from_input, take_snapshot, vol_from_id
-from dsnap.utils import fatal
+from dsnap.prompt import snap_from_input, download_snap_id, snaps_from_input, vol_from_id, bold
+from dsnap.utils import fatal, take_snapshot
 
 if TYPE_CHECKING:
     from mypy_boto3_ec2 import service_resource as r
@@ -50,7 +50,7 @@ def init(
     """
     output = utils.init_vagrant(out_dir, force)
     if output:
-        print(f"Wrote Vagrantfile to {typer.style('./'+str(output), bold=True)}")
+        print(f"Wrote Vagrantfile to {style('./'+str(output), bold=True)}")
     else:
         print(f"Vagrantfile already exists at {output}, use the --force to overwrite.")
 
@@ -67,10 +67,10 @@ def list_snapshots(
     If --devices is used alongside --instance-id then listed snapshots are for that instances given devices, by default this
     is /dev/sda and /dev/xvda.
     """
-    print(typer.style("           Id          |   Owneer ID   | Description   ", underline=True))
+    secho("           Id          |   Owneer ID   | Description   ", underline=True)
     try:
-        for snap in snaps_from_input(sess, instance_id, devices):
-            print(f"{typer.style(snap.id, bold=True)}   {snap.owner_id}   {snap.description}")
+        for snap in snaps_from_input(sess, instance_id):
+            secho(f"{style(snap.id, bold=True)}   {snap.owner_id}   {snap.description}")
     except UserWarning as e:
         fatal(*e.args)
 
@@ -127,8 +127,13 @@ def create(ids: List[str] = typer.Argument(
             fatal("must pass at least one instance or volume id as an argument")
         for i in ids:
             vol = vol_from_id(sess, i)
+
+            devices = ', '.join([a['Device'] for a in vol.attachments])
+            instances = ', '.join([a['InstanceId'] for a in vol.attachments])
+            secho(f"Creating snapshot from Instance(s): {bold(instances)}, Volume: {bold(vol.id)}, Device: {bold(devices)}")
+
             s = take_snapshot(vol)
-            print(f"Created snapshot {typer.style(s.id, bold=True)} from instance " f"{typer.style(i, bold=True)}")
+            secho("Created snapshot {} from volume {}".format(bold(s.id), bold(vol.id)), fg=colors.GREEN)
 
     except UserWarning as e:
         fatal(*e.args)
@@ -147,6 +152,6 @@ def delete(ids: List[str] = typer.Argument(None, help='One or more ID\'s of snap
         try:
             s = ec2.Snapshot(i)
             s.delete()
-            print(f"Deleted snapshot {typer.style(s.id, bold=True)}")
+            secho(f"Deleted snapshot {style(s.id, bold=True)}")
         except UserWarning as e:
             fatal(*e.args)

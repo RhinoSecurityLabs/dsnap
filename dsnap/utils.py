@@ -1,11 +1,8 @@
-import atexit
 import hashlib
 import logging
-import signal
 from base64 import b64encode
 from pathlib import Path
 
-import sys
 from typing import List, Iterable, Dict, Optional
 
 from typing import TYPE_CHECKING
@@ -33,26 +30,6 @@ def cleanup_snap(snap: 'r.Snapshot'):
         snap.delete()
 
     return func
-
-
-def create_tmp_snap(vol: 'r.Volume') -> 'r.Snapshot':
-    """Creates a temporary snapshot that will get deleted when the process exits."""
-    instances = ', '.join([f"{a['InstanceId']} {a['Device']}" for a in vol.attachments])
-    desc = f'Instance(s): {instances}, Volume: {vol.id}'
-    print(f'Creating snapshot for {desc}')
-    snap = vol.create_snapshot(
-        Description=f'dsnap ({desc})',
-        TagSpecifications=[{
-            'ResourceType': 'snapshot',
-            'Tags': [{'Key': 'dsnap', 'Value': 'true'}]
-        }]
-    )
-    atexit.register(cleanup_snap(snap))
-    signal.signal(signal.SIGTERM, lambda sigs, type: sys.exit())
-    print("Waiting for snapshot to complete.")
-    snap.wait_until_completed()
-    logging.info("Snapshot creation finished")
-    return snap
 
 
 def sha256_check(data: bytes, digest: str) -> bool:
@@ -83,3 +60,21 @@ def init_vagrant(out_dir: Path = Path('.'), force=False) -> Optional[Path]:
 def fatal(*msg: str):
     logging.fatal('\n'.join(msg))
     exit(1)
+
+
+def take_snapshot(vol: 'r.Volume', desc: str = '') -> 'r.Snapshot':
+    if not desc:
+        devices = ', '.join([a['Device'] for a in vol.attachments])
+        # volumes can be attached to more then one instance at a time so include all attachments in the description
+        instances = ', '.join([a['InstanceId'] for a in vol.attachments])
+        desc = "Instance(s): {}, Volume: {}, Device: {}".format(instances, vol.id, devices)
+
+    snap = vol.create_snapshot(
+        Description=desc,
+        TagSpecifications=[{
+            'ResourceType': 'snapshot',
+            'Tags': [{'Key': 'dsnap', 'Value': 'true'}]
+        }]
+    )
+    snap.wait_until_completed()
+    return snap
