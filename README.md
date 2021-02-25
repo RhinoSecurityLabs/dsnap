@@ -44,7 +44,7 @@ Commands:
 
 ### Recording
 
-![Alt Text](./docs/demo.light.gif)
+![Alt Text](./docs/demo.gif)
 
 ### Listing Snapshots
 ```shell
