@@ -33,7 +33,10 @@ def snap_from_input(sess, id) -> 'r.Snapshot':
     vol: Optional['r.Volume'] = None
 
     if not id:
-        inst: 'r.Instance' = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
+        # Make sure not to include pending instances, they won't have info like VpcId and SubnetId and will throw an error
+        inst: 'r.Instance' = resource_prompt(ec2.instances.filter(
+            Filters=[{"Name": 'instance-state-name', "Values": ['running', 'stopping', 'stopped', 'shutting-down']}]
+        ), '[PrivateDnsName, VpcId, SubnetId]')
         vol = resource_prompt(inst.volumes.all(), 'Attachments[*].Device')
         try:
             snap = resource_prompt(cast('r.Volume', vol).snapshots.all(), '[StartTime, OwnerId, Description]')
@@ -60,7 +63,9 @@ def vol_from_id(sess, i: str) -> 'r.Volume':
     """download_from_id is meant to be called from the cli commands and will exit in the case of an error"""
     ec2: 'r.EC2ServiceResource' = sess.resource('ec2')
     if not i:
-        inst: 'r.Instance' = resource_prompt(ec2.instances.all(), '[PrivateDnsName, VpcId, SubnetId]')
+        inst: 'r.Instance' = resource_prompt(ec2.instances.filter(
+            Filters=[{"Name": 'instance-state-name', "Values": ['running', 'stopping', 'stopped', 'shutting-down']}]
+        ), '[PrivateDnsName, VpcId, SubnetId]')
         vol: 'r.Volume' = resource_prompt(inst.volumes.all(), 'Attachments[*].Device')
     elif i.startswith('vol-'):
         vol = ec2.Volume(i)
@@ -102,7 +107,7 @@ def item_prompt(resources: Iterable[T], jmespath_msg: str = None) -> T:
         if jmespath_msg:
             # dump and load json to convert datetime and similar to something readable
             data = json.loads(json.dumps(item.meta.data, default=str))
-            msg = ', '.join(jmespath.search(jmespath_msg, data=data))
+            msg = ', '.join(jmespath.search(jmespath_msg, data=data or ''))
         name = get_name_tag(item.tags)
         print(f"{i}) {item.id} {name and f'Name: {name}, '}({msg})")
 
