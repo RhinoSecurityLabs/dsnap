@@ -4,6 +4,10 @@
 
 Utility for downloading EBS snapshots using the EBS Direct API's.
 
+## Recording
+
+![Alt Text](./docs/demo.gif)
+
 ## Install
 
 ### PyPi
@@ -40,11 +44,37 @@ Commands:
   list    List snapshots in AWS.
 ```
 
+## IAM Permissions
+
+Not all these permissions are strictly necessary, for example if you provide an existing snapshot ID with the `get `
+command you'll only need `ebs:ListSnapshotBlocks` and `ebs:GetSnapshotBlock`. The rest of the permissions are either
+used to find volumes and snapshots based on instance ID's, create temporary snapshots if none exist or for use with the
+`create` and `delete` commands.
+
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ebs:ListSnapshotBlocks",
+                "ebs:GetSnapshotBlock",
+                "ec2:DescribeSnapshots",
+                "ec2:DescribeInstances",
+                "ec2:DescribeVolumes",
+                "ec2:DeleteSnapshot",
+                "ec2:CreateSnapshot",
+                "ec2:CreateTags"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
 ## Examples
-
-### Recording
-
-![Alt Text](./docs/demo.gif)
 
 ### Listing Snapshots
 ```shell
@@ -129,11 +159,29 @@ CPE_NAME="cpe:2.3:o:amazon:amazon_linux:2"
 HOME_URL="https://amazonlinux.com/"
 ```
 
-## Library Use
+## As a Library
 
 dsnap is also meant to be used as a library, however for this purpose it is worth keeping in mind this is an early version and it is still being developed. The interfaces will likely change as new functionality is added.
 
 We'll do our best to make sure we follow SemVer versioning to avoid any breaking changes in minor and patch versions.
+
+## Related tools
+
+### Pacu Integration
+
+This project is used by [Pacu](https://github.com/RhinoSecurityLabs/pacu) in the
+[ebs__download_snapshots](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details#ebs__download_snapshots) module.
+The primary benefit of using the Pacu module is to reduce unnecessary API call's, as a tradeoff it doesn't have some
+niceties that are included with dsnap.
+
+### Other Interesting Tools
+
+Please keep in mind that we can't vouch for the following tools. However, we felt they were worth mentioning here.
+
+* [ebs-direct-sec-tools](https://github.com/crypsisgroup/ebs-direct-sec-tools)
+  * In particular the [scansecrets](https://github.com/crypsisgroup/ebs-direct-sec-tools#scansecrets) and [diffsecrets](https://github.com/crypsisgroup/ebs-direct-sec-tools#diffsecrets) commands are interesting because instead of mounting the snapshots they scan the raw image for secrets directly.
+
+
 
 ## Development
 
