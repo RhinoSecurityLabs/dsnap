@@ -4,7 +4,7 @@
 
 Utility for downloading EBS snapshots using the EBS Direct API's.
 
-## Recording
+Related blog post: [Downloading and Exploring AWS EBS Snapshots](https://rhinosecuritylabs.com/aws/exploring-aws-ebs-snapshots/).
 
 ![Alt Text](./docs/demo.gif)
 
