@@ -4,8 +4,6 @@
 
 Utility for downloading EBS snapshots using the EBS Direct API's.
 
-#### Related
-
 * Blog Post: [Downloading and Exploring AWS EBS Snapshots](https://rhinosecuritylabs.com/aws/exploring-aws-ebs-snapshots/).
 * Pacu Integration: [ebs__download_snapshots](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details#ebs__download_snapshots).
 
