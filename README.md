@@ -4,7 +4,8 @@
 
 Utility for downloading EBS snapshots using the EBS Direct API's.
 
-## Recording
+For more information on dsnap and the EBS Direct API's check out the
+[Downloading and Exploring AWS EBS Snapshots](https://rhinosecuritylabs.com/aws/exploring-aws-ebs-snapshots/) blog post.
 
 ![Alt Text](./docs/demo.gif)
 
