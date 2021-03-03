@@ -4,7 +4,11 @@
 
 Utility for downloading EBS snapshots using the EBS Direct API's.
 
-Related blog post: [Downloading and Exploring AWS EBS Snapshots](https://rhinosecuritylabs.com/aws/exploring-aws-ebs-snapshots/).
+* Blog Post: [Downloading and Exploring AWS EBS Snapshots](https://rhinosecuritylabs.com/aws/exploring-aws-ebs-snapshots/).
+* This is used as a library by the [Pacu](https://github.com/RhinoSecurityLabs/pacu) module [ebs__download_snapshots](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details#ebs__download_snapshots).
+  * Check out the [Pacu integration](#pacu-integration) section to get an idea of the tradeoff's between the using this vs the Pacu module.
+
+#### Recording
 
 ![Alt Text](./docs/demo.gif)
 
@@ -173,6 +177,8 @@ This project is used by [Pacu](https://github.com/RhinoSecurityLabs/pacu) in the
 [ebs__download_snapshots](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details#ebs__download_snapshots) module.
 The primary benefit of using the Pacu module is to reduce unnecessary API call's, as a tradeoff it doesn't have some
 niceties that are included with dsnap.
+
+For example the Pacu module reuses snapshots gathered from [ebs__enum_volumes_snapshots](https://github.com/RhinoSecurityLabs/pacu/wiki/Module-Details#ebs__enum_volumes_snapshots), this prevents looking up snapshots more often then needed. At the moment it does not support some dsnap features like creating temporary snapshots or searching for snapshots by instance ID, this however may change in the future.
 
 ### Other Interesting Tools
 
