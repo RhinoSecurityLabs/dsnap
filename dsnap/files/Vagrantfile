@@ -1,14 +1,17 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-20.04"
 
+  # Prevents RCE from guest to host.
+  #   https://blog.ryanjarv.sh/2019/06/08/malicious-vagrant-boxes.html
   Dir.mkdir 'vagrant' unless File.exists? 'vagrant'
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "vagrant", "/vagrant"
 
 
-  if ARGV[0] === 'up'
+  if ['up', 'reload'].member? ARGV[0]
     image = ENV['IMAGE']
     if image === nil
       puts "Usage: IMAGE='path/to/snapshot.img' vagrant #{ARGV.join( ' ' )}"
