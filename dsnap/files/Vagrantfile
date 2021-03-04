@@ -8,7 +8,6 @@ Vagrant.configure("2") do |config|
   #   https://blog.ryanjarv.sh/2019/06/08/malicious-vagrant-boxes.html
   Dir.mkdir 'vagrant' unless File.exists? 'vagrant'
   config.vm.synced_folder ".", "/vagrant", disabled: true
-  config.vm.synced_folder "vagrant", "/vagrant"
 
 
   if ['up', 'reload'].member? ARGV[0]
