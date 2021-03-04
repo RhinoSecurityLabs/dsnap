@@ -123,7 +123,7 @@ By default, we treat the guest as untrusted within reason. This means that by de
 guest and the host and external networking is disabled. SSH access from the host is still allowed for usability.
 
 If you trust the downloaded image you can enable both of these features by using `vagrant init --trusted` to write out
-the Vagrantfile. If you do this keep in mind that due to how Vagrant and Virtualbox work this will allow access to the
+the Vagrantfile. If you do this keep in mind that because of how Vagrant and Virtualbox work this will allow access to the
 hosts loopback adapter as well, as far as we know there is no simple way to prevent this while still allowing external
 networking.
 
