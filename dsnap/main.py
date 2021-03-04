@@ -32,12 +32,15 @@ def session(
 
 @app.command()
 def init(
+        trusted: bool = typer.Option(False, help='Enable network access and host share.'),
         out_dir: Path = typer.Option(Path('.'), help='Output directory to write Vagrantfile'),
         force: bool = typer.Option(False, help='Overwrite any existing Vagrantfile.')
 ):
     """
     Write out a Vagrantfile template to explore downloaded snapshots.
 
+    If --trusted is used external guest VM networking and the shared mount will be enabled.
+        Warning: Due to how Vagrant and VirtualBox work's this will allow access to the host's loopback adapter.
     If --out-dir is used the given directory will be used instead.
     If --force is used we will overwrite an already present Vagrantfile
 
@@ -48,7 +51,7 @@ def init(
     % IMAGE=snap-0543a8681adce0086.img vagrant up
     % vagrant ssh
     """
-    output = utils.init_vagrant(out_dir, force)
+    output = utils.init_vagrant(out_dir, force, trusted)
     if output:
         print(f"Wrote Vagrantfile to {style('./'+str(output), bold=True)}")
     else:

@@ -117,6 +117,23 @@ This requires virtualbox to be installed. dsnap init will write a Vagrantfile to
 % vagrant ssh
 ```
 
+#### Trusted Mode
+
+By default, we treat the guest as untrusted within reason. This means that by default there is no mount between the
+guest and the host and external networking is disabled. SSH access from the host is still allowed for usability.
+
+If you trust the downloaded image you can enable both of these features by using `vagrant init --trusted` to write out
+the Vagrantfile. If you do this keep in mind that due to how Vagrant and Virtualbox work this will allow access to the
+hosts loopback adapter as well, as far as we know there is no simple way to prevent this while still allowing external
+networking.
+
+This is due to how VirtualBox's NAT adapter works which is both default and heavily relied on by vagrant. You can find
+more information in this [blog post](https://blog.ryanjarv.sh/2020/11/13/virtual-box-networking.html).
+
+Another common vagrant escape is related to the default share mounting the directory containing the executable
+Vagrantfile. This *is* prevented even in the trusted mode. This is done by mounting a subdirectory instead of the 
+default.
+
 ### Mounting With Docker
 
 This uses libguestfs to work directly with the downloaded img file.
