@@ -32,39 +32,11 @@ Vagrant.configure("2") do |config|
     vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vdi]
   end
 
-  config.vm.network "private_network", type: "dhcp", adapter: 1
-  config.vm.network :forwarded_port, id: 'ssh', guest: 22, host: 2222, disabled: true
-
-  # Used because most the information about the vm isn't available when this config get's parsed.
-  # We can't use a lazy object here because config.ssh.host is used too early on to print to the console
-  # and we end up getting the wrong IP. So instead call out to `VBoxManager dhcpserver` each time we need
-  # the IP. This should result in the correct IP by the time it's actually needed.
-  class GuestIP
-    def ip_address
-      vm_id = File.read(File.dirname(__FILE__) + '/.vagrant/machines/default/virtualbox/id')
-
-      @vminfo ||= `VBoxManage showvminfo #{vm_id} --details --machinereadable`
-      interface = @vminfo.lines.grep(/hostonlyadapter1/)[0].match('\w+="(\w+)"')[1]
-      mac_addr = @vminfo.lines.grep(/macaddress1/)[0].match('\w+="(\w+)"')[1]
-
-      resp=`VBoxManage dhcpserver findlease --interface='#{interface}' --mac-address='#{mac_addr}'`
-      ip_address=resp.lines.grep(/IP Address/)[0].match('([0-9.]+)')[1]
-    end
-
-    def to_s
-      self.ip_address
-    end
-
-    def to_str
-      self.ip_address
-    end
-  end
-
-
-  # Vagrant isn't meant to work without the NAT network adapter so work around this by scraping
-  # the the IP address from the networks dhcpserver and using the returned ip address as the
-  # guest ssh ip.
-  config.ssh.host = GuestIP.new
+  # Prevents guest access to the hosts loopback adapter but also prevents external networking as a side effect.
+  #   https://blog.ryanjarv.sh/2020/11/13/virtual-box-networking.html
+  ip_addr = "192.168.252.4"
+  config.vm.network "private_network", ip: ip_addr, adapter: 1
+  config.ssh.host = ip_addr
 
   config.vm.provision "shell", inline: <<-SHELL
     sudo mkdir /mnt/snapshot
