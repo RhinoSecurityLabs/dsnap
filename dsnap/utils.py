@@ -46,14 +46,9 @@ def sha256_check(data: bytes, digest: str) -> bool:
     return result
 
 
-def init_vagrant(out_dir: Path = Path('.'), force=False, trusted=False) -> Optional[Path]:
+def init_vagrant(out_dir: Path = Path('.'), force=False) -> Optional[Path]:
     """Initializes out_dir directory with a templated Vagrantfile for mounting downloaded images"""
-    if trusted:
-        vagrant_path = 'files/Vagrantfile.trusted'
-    else:
-        vagrant_path = 'files/Vagrantfile'
-
-    template = Path(__file__).parent.joinpath(Path(vagrant_path))
+    template = Path(__file__).parent.joinpath(Path('files/Vagrantfile'))
     out = out_dir.joinpath(Path('Vagrantfile').name)
     if out.exists() and not force:
         return None
