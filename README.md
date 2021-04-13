@@ -109,6 +109,8 @@ Cleaning up snapshot: snap-0543a8681adce0086
 ```
 
 ### Mounting in Vagrant
+Note: Vagrant does not offer any guarantee's of seperation between the guest and the host. It shouldn't considered a security boundry like most VM's.
+
 This requires virtualbox to be installed. dsnap init will write a Vagrantfile to the current directory that can be used to mount a specific downloaded snapshot. Conversion to a VDI disk is handled in the Vagrantfile, it will look for the disk file specified in the IMAGE environment variable, convert it to a VDI using `VBoxManage convertdd`. The resulting VDI is destroyed when the Vagrant box is, however the original raw .img file will remain and can be reused as needed.
 
 ```shell
@@ -116,22 +118,6 @@ This requires virtualbox to be installed. dsnap init will write a Vagrantfile to
 % IMAGE=snap-0543a8681adce0086.img vagrant up
 % vagrant ssh
 ```
-
-#### Trusted Mode
-
-By default, we treat the guest as untrusted within reason. This means that by default there is no mount between the
-guest and the host and external networking is disabled. SSH access from the host is still allowed for usability.
-
-If you trust the downloaded image you can enable both of these features by using `vagrant init --trusted` to write out
-the Vagrantfile. This will enable networking and the host to guest vagrant share.
-
-Improtant: Keep in mind trusted mode will allow access to the hosts loopback adapter. This is due to how VirtualBox's 
-NAT adapter works which is both default and heavily relied on by vagrant. You can find more information on this in this
-[blog post](https://blog.ryanjarv.sh/2020/11/13/virtual-box-networking.html).
-
-Another common vagrant escape is related to the default share mounting the directory containing the executable
-Vagrantfile. This *is* prevented even in the trusted mode. This is done by mounting a subdirectory instead of the 
-default.
 
 ### Mounting With Docker
 
