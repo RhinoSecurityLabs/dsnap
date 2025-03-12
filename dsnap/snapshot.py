@@ -30,15 +30,11 @@ class Block:
         self.snapshot = snap
         self.BlockIndex = resp['BlockIndex']
         self.Offset: int = resp['BlockIndex'] * snap.block_size_b
-        # When using the list_changed_blocks api the process is mostly the same except that we just care about the
-        # seecond block token. The first block token would have already been copied over locally and is what we'll be
-        # overwriting.
         self.BlockToken = resp['BlockToken']
         self.BlockData: StreamingBody = None  # type: ignore[assignment]
         self.Checksum: str = ''
 
     def write(self) -> int:
-        """Takes a WriteBlock object to write to disk and yields the number of MiB's for each write."""
         logging.debug(f"Writing block at offset {self.Offset}")
         data = self.BlockData.read()
 
@@ -67,18 +63,23 @@ class Snapshot:
     def __init__(
             self,
             snapshot_id: str,
-            boto3_session: boto3.session.Session = boto3.session.Session(region_name='us-east-1'),
+            boto3_session: boto3.session.Session = None,
+            region: str = None,
             botocore_conf: botocore.config.Config = botocore.config.Config()
     ) -> None:
+        # If a region is provided, override any existing session with a new one in that region.
+        if region is not None:
+            boto3_session = boto3.session.Session(region_name=region)
+        elif boto3_session is None or not boto3_session.region_name:
+            boto3_session = boto3.session.Session(region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+        
         self.blocks: List[Block] = []
         self.snapshot_id = snapshot_id
         self.path = ''
-
         self.queue: Queue = Queue()
 
-        # Make sure the number of connections matches the number of threads we run when fetching the EBS snapshot
         ebs_config = botocore.config.Config(max_pool_connections=RUN_THREADS).merge(botocore_conf)
-        self.ebs: EBSClient = boto3_session.client('ebs', config=ebs_config)
+        self.ebs: 'EBSClient' = boto3_session.client('ebs', config=ebs_config)
 
         self.volume_size_b = 0
         self.total_blocks = 0
@@ -86,50 +87,34 @@ class Snapshot:
         self.block_size_b = 0
 
     def get_blocks(self) -> List[Block]:
-        """Retrieves the list of blocks for self.snapshot_id.
-
-        Various attributes are set when calling this method, best to call this early.
-        """
         for block in self._get_blocks():
             self.blocks.append(Block(self, block))
         return self.blocks
 
     def _get_blocks(self) -> List['BlockTypeDef']:
         resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id)
-
-        # BlockIndex is equal to 512 KiB and seek uses bytes.
-        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ebs.html#EBS.Client.put_snapshot_block
         self.block_size_b = resp['BlockSize']
         self.volume_size_b = resp['VolumeSize'] * GIGABYTE
         logging.info(f"Volume size is {self.volume_size_b}")
-
         blocks = resp['Blocks']
         while resp.get('NextToken'):
             resp = self.ebs.list_snapshot_blocks(SnapshotId=self.snapshot_id, NextToken=resp.get('NextToken'))
             blocks.extend(resp['Blocks'])
-
         self.total_blocks = len(blocks)
         logging.info(f"Number of blocks in image: {self.total_blocks}")
-
         return blocks
 
     def run(self, func: Callable[[Block], None], threads=RUN_THREADS):
-        """Calls func on each block passing it a Block object.
-
-        Run's across number of threads passed in `threads`, this defaults to 50.
-        """
         for block in self.blocks:
             logging.debug(f"Putting block index {block.BlockIndex} on the queue")
             self.queue.put(block)
-
-        threads = list()
+        thread_list = []
         for i in range(RUN_THREADS):
             t = Thread(target=lambda: self._run(func))
-            threads.append(t)
+            thread_list.append(t)
             t.start()
-
         self.queue.join()
-        for t in threads:
+        for t in thread_list:
             t.join()
 
     def _run(self, f: Callable[[Block], None]) -> None:
@@ -153,24 +138,19 @@ class LocalSnapshot(Snapshot):
             self,
             dir: str,
             snapshot_id: str,
-            boto3_session: boto3.session.Session = boto3.session.Session(region_name='us-east-1'),
+            boto3_session: boto3.session.Session = None,
+            region: str = None,
             botocore_conf: botocore.config.Config = botocore.config.Config()
     ) -> None:
-        super().__init__(snapshot_id, boto3_session, botocore_conf)
-
+        super().__init__(snapshot_id, boto3_session, region, botocore_conf)
         assert dir
         self.path = str(Path(dir).joinpath(f"{snapshot_id}.img"))
 
     def fetch(self, force: bool = False) -> None:
-        """Downloads self.snapshot_id to the self.path.
-
-        If force is true output_file will be overwritten.
-        """
         if Path(self.path).exists() and not force:
             raise FileExistsError(f"The output file '{self.path}' already exists.")
         self.path = os.path.abspath(self.path)
         print(f"Output Path: {self.path}")
-
         self.get_blocks()
         self.truncate()
 
@@ -179,7 +159,6 @@ class LocalSnapshot(Snapshot):
         self.run(download)
 
     def truncate(self) -> None:
-        """Truncates self.output_file to size self.volume_size_b."""
         with open(self.path, 'wb') as f:
             print(f"Truncating file to {self.volume_size_b/GIGABYTE} GB", file=sys.stderr)
             f.truncate(self.volume_size_b)
