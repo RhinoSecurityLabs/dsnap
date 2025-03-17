@@ -9,13 +9,13 @@ readme = "README.md"
 dsnap = "dsnap.main:app"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.8"
 boto3 = "^1.16.0"
-typer = { version = "^0.3.2", optional = true }
 
 # We don't depend on this directly but make sure 1.26.4 or newer get's installed.
 #   https://github.com/advisories/GHSA-5phf-pp7p-vc2r
 urllib3 = "^1.26.4"
+typer = "^0.15.2"
 
 [tool.poetry.extras]
 cli = ["typer"]
