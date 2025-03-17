@@ -68,8 +68,13 @@ class Snapshot:
             self,
             snapshot_id: str,
             boto3_session: boto3.session.Session = boto3.session.Session(region_name='us-east-1'),
-            botocore_conf: botocore.config.Config = botocore.config.Config()
+            botocore_conf: botocore.config.Config = botocore.config.Config(),
+            region: str = None
     ) -> None:
+        # If a region is provided, override the boto3_session with one that uses the supplied region.
+        if region is not None:
+            boto3_session = boto3.session.Session(region_name=region)
+
         self.blocks: List[Block] = []
         self.snapshot_id = snapshot_id
         self.path = ''
@@ -78,7 +83,7 @@ class Snapshot:
 
         # Make sure the number of connections matches the number of threads we run when fetching the EBS snapshot
         ebs_config = botocore.config.Config(max_pool_connections=RUN_THREADS).merge(botocore_conf)
-        self.ebs: EBSClient = boto3_session.client('ebs', config=ebs_config)
+        self.ebs: 'EBSClient' = boto3_session.client('ebs', config=ebs_config)
 
         self.volume_size_b = 0
         self.total_blocks = 0
@@ -154,9 +159,10 @@ class LocalSnapshot(Snapshot):
             dir: str,
             snapshot_id: str,
             boto3_session: boto3.session.Session = boto3.session.Session(region_name='us-east-1'),
-            botocore_conf: botocore.config.Config = botocore.config.Config()
+            botocore_conf: botocore.config.Config = botocore.config.Config(),
+            region: str = None
     ) -> None:
-        super().__init__(snapshot_id, boto3_session, botocore_conf)
+        super().__init__(snapshot_id, boto3_session, botocore_conf, region)
 
         assert dir
         self.path = str(Path(dir).joinpath(f"{snapshot_id}.img"))
