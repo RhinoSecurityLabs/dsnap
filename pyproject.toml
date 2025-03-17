@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dsnap"
-version = "v1.0.0"
+version = "1.0.1"
 description = "Utility for downloading EBS snapshots using the EBS Direct API's"
 authors = ["Ryan Gerstenkorn <ryan.gerstenkorn@rhinosecuritylabs.com>"]
 readme = "README.md"
